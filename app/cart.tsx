@@ -3,18 +3,42 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Button, Card, Header, Screen } from '@/components';
+import { Button, Card, Header, Screen, VehicleSelector } from '@/components';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocale } from '@/hooks/useLocale';
+import { distanceKm } from '@/services/tracking';
+import {
+  calculateVehicleFee,
+  estimateVehicleRideMinutes,
+} from '@/services/vehicles';
+import { getEffectiveLocation } from '@/services/geofence';
+import { getVehicleRate } from '@/constants/adminSettings';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 
 export default function CartPage() {
   const router = useRouter();
-  const { lines, restaurant, subtotal, setQty, clear } = useCart();
+  const {
+    lines,
+    restaurant,
+    subtotal,
+    setQty,
+    clear,
+    vehicleType,
+    setVehicleType,
+  } = useCart();
   const { user } = useAuth();
+  const { locale, t } = useLocale();
+  const ar = locale === 'ar';
 
-  const deliveryFee = restaurant?.deliveryFee ?? 0;
+  const userLoc = getEffectiveLocation(user);
+  const dist = restaurant ? distanceKm(userLoc, restaurant.location) : 0;
+  const rate = getVehicleRate(vehicleType);
+  const deliveryFee = restaurant ? calculateVehicleFee(rate, dist) : 0;
+  const rideMin = estimateVehicleRideMinutes(rate, dist);
+  const totalMin = (restaurant?.prepTimeMin ?? 0) + rideMin;
   const total = subtotal + deliveryFee;
+  const vehicleName = ar ? rate.nameAr : rate.nameEn;
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -74,15 +98,51 @@ export default function CartPage() {
               ))}
             </Card>
 
+            {/* Vehicle selection */}
             <Card>
-              <Text style={styles.section}>Receipt</Text>
-              <Row label="Subtotal" value={`EGP ${subtotal.toFixed(0)}`} />
-              <Row label="Delivery fee" value={`EGP ${deliveryFee.toFixed(0)}`} />
+              <View style={styles.vehHeaderRow}>
+                <View style={styles.vehIcon}>
+                  <MaterialIcons name="local-shipping" size={18} color={colors.text} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.section}>{t('chooseVehicle')}</Text>
+                  <Text style={styles.vehSub}>{t('chooseVehicleSub')}</Text>
+                </View>
+              </View>
+              <View style={{ height: spacing.md }} />
+              <VehicleSelector
+                distKm={dist}
+                value={vehicleType}
+                onChange={setVehicleType}
+              />
+              <View style={styles.totalTimeRow}>
+                <MaterialIcons name="schedule" size={14} color={colors.primaryDark} />
+                <Text style={styles.totalTimeText}>
+                  {ar
+                    ? `${totalMin} دقيقة إجمالاً (${restaurant?.prepTimeMin ?? 0} ${t('prepLabel')} + ${rideMin} ${t('rideLabel')})`
+                    : `${totalMin} ${t('totalTime')} (${restaurant?.prepTimeMin ?? 0} ${t('prepLabel')} + ${rideMin} ${t('rideLabel')})`}
+                </Text>
+              </View>
+            </Card>
+
+            <Card>
+              <Text style={styles.section}>{t('receipt')}</Text>
+              <Row label={t('subtotal')} value={`EGP ${subtotal.toFixed(0)}`} />
+              <View style={styles.feeRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recLabel}>{t('deliveryFeeLabel')}</Text>
+                  <Text style={styles.feeMeta}>
+                    {t('deliveryVia')} {vehicleName} · {rideMin} {t('minShort')}
+                    {dist > 0 ? ` · ${dist.toFixed(1)} km` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.recValue}>EGP {deliveryFee.toFixed(0)}</Text>
+              </View>
               {user && user.freeDeliveries > 0 ? (
                 <Row label="Free delivery vouchers" value={`${user.freeDeliveries} available`} muted />
               ) : null}
               <View style={styles.divider} />
-              <Row label="Total" value={`EGP ${total.toFixed(0)}`} bold />
+              <Row label={t('total')} value={`EGP ${total.toFixed(0)}`} bold />
             </Card>
           </ScrollView>
 
@@ -151,6 +211,33 @@ const styles = StyleSheet.create({
   },
   qty: { ...typography.bodyStrong, color: colors.text, minWidth: 22, textAlign: 'center' },
   section: { ...typography.section, color: colors.text, marginBottom: spacing.sm },
+  vehHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  vehIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  totalTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    marginTop: spacing.md,
+  },
+  totalTimeText: { ...typography.micro, color: colors.text, fontWeight: '700', flex: 1 },
+  feeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  feeMeta: { ...typography.micro, color: colors.textMuted, marginTop: 2, fontWeight: '600' },
   recRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   recLabel: { ...typography.body, color: colors.textMuted },
   recValue: { ...typography.bodyStrong, color: colors.text },

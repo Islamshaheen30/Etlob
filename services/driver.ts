@@ -1,8 +1,12 @@
-// Driver-side data layer (mock orders queue for bicycle riders)
+// Driver-side data layer (mock orders queue for delivery riders).
+// Each generated order carries a vehicleType so the dashboard can route it
+// only to riders operating that vehicle.
 
 import { RESTAURANTS } from '@/constants/mockData';
 import { SADAT_CENTER } from '@/constants/config';
+import { VehicleType, getVehicleRate } from '@/constants/adminSettings';
 import { LatLng } from './tracking';
+import { calculateVehicleFee, pickVehicleForDistance } from './vehicles';
 
 export type DriverOrderStage =
   | 'available'
@@ -40,6 +44,8 @@ export interface DriverOrder {
   restaurantPosition: LatLng;
   customerPosition: LatLng;
   notes?: string;
+  // Vehicle the customer requested. Riders only see matching orders.
+  vehicleType: VehicleType;
 }
 
 const NAMES = [
@@ -96,7 +102,9 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export function generateMockDriverOrder(): DriverOrder {
+// Optional `forcedVehicle` lets the queue lean toward a particular vehicle
+// (used when a rider goes online so they immediately see matching jobs).
+export function generateMockDriverOrder(forcedVehicle?: VehicleType): DriverOrder {
   const restaurant = pick(RESTAURANTS);
   const itemCount = 1 + Math.floor(Math.random() * 3);
   const items = Array.from({ length: itemCount }).map((_, idx) => ({
@@ -105,7 +113,6 @@ export function generateMockDriverOrder(): DriverOrder {
     qty: 1 + Math.floor(Math.random() * 2),
   }));
   const total = 60 + Math.floor(Math.random() * 220);
-  const earnings = restaurant.deliveryFee + Math.floor(Math.random() * 12);
 
   // Random customer position around Sadat center
   const angle = Math.random() * Math.PI * 2;
@@ -115,6 +122,17 @@ export function generateMockDriverOrder(): DriverOrder {
     lng: SADAT_CENTER.lng + Math.sin(angle) * radial,
   };
   const distance = 0.6 + Math.random() * 4.2;
+
+  const vehicleType: VehicleType =
+    forcedVehicle ?? pickVehicleForDistance(distance);
+  const baseFee = calculateVehicleFee(getVehicleRate(vehicleType), distance);
+  const tip = Math.random() > 0.7 ? Math.floor(Math.random() * 6) : 0;
+  const earnings = baseFee + tip;
+  const rate = getVehicleRate(vehicleType);
+  const rideMin = Math.max(
+    4,
+    Math.ceil((distance / Math.max(1, rate.speedKmh)) * 60)
+  );
 
   return {
     id: `dord_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -135,11 +153,12 @@ export function generateMockDriverOrder(): DriverOrder {
     total,
     earnings,
     distanceKm: Number(distance.toFixed(2)),
-    estimatedMinutes: 12 + Math.floor(Math.random() * 18),
+    estimatedMinutes: rideMin + 6 + Math.floor(Math.random() * 6),
     stage: 'available',
     createdAt: Date.now(),
     restaurantPosition: restaurant.location,
     customerPosition,
     notes: pick(NOTES),
+    vehicleType,
   };
 }

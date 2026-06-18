@@ -11,18 +11,28 @@ import {
 } from '@/components';
 import { useAuth } from '@/hooks/useAuth';
 import { useDriver } from '@/hooks/useDriver';
+import { useLocale } from '@/hooks/useLocale';
 import { useAlert } from '@/template';
 import { DRIVER_STAGE_LABELS } from '@/services/driver';
 import { APP } from '@/constants/config';
+import {
+  VEHICLE_RATES,
+  VehicleType,
+  getVehicleRate,
+} from '@/constants/adminSettings';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';
 
 export default function DriverDashboard() {
   const router = useRouter();
   const { user, loading, setDriverMode } = useAuth();
   const { showAlert } = useAlert();
+  const { locale, t } = useLocale();
+  const ar = locale === 'ar';
   const {
     isOnline,
     setOnline,
+    vehicleType,
+    setVehicleType,
     available,
     active,
     history,
@@ -36,6 +46,9 @@ export default function DriverDashboard() {
   if (!user) return <Redirect href="/" />;
 
   const stageLabel = active ? DRIVER_STAGE_LABELS[active.stage] : '';
+  const availableForMe = available.filter((o) => o.vehicleType === vehicleType);
+  const myRate = getVehicleRate(vehicleType);
+  const myVehicleName = ar ? myRate.nameAr : myRate.nameEn;
 
   const handleAccept = (id: string) => {
     if (active) {
@@ -47,6 +60,19 @@ export default function DriverDashboard() {
     }
     const ok = acceptOrder(id);
     if (ok) router.push('/driver/active');
+  };
+
+  const handleVehicleChange = (v: VehicleType) => {
+    if (active) {
+      showAlert(
+        ar ? 'الانتهاء من التوصيل أولاً' : 'Finish current delivery first',
+        ar
+          ? 'لا يمكن تغيير المركبة أثناء وجود طلب نشط.'
+          : 'You cannot change your vehicle while a delivery is in progress.'
+      );
+      return;
+    }
+    setVehicleType(v);
   };
 
   const switchToCustomer = async () => {
@@ -103,6 +129,58 @@ export default function DriverDashboard() {
           </View>
         </View>
 
+        {/* Vehicle picker */}
+        <Card>
+          <View style={styles.vehHeaderRow}>
+            <View style={styles.vehHeaderIcon}>
+              <MaterialIcons name={myRate.icon as any} size={18} color={colors.text} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.section}>{t('selectVehicle')}</Text>
+              <Text style={styles.vehSub}>{t('selectVehicleSub')}</Text>
+            </View>
+            <Pill label={myVehicleName} tone="primary" />
+          </View>
+          <View style={styles.vehChipRow}>
+            {VEHICLE_RATES.filter((r) => r.active).map((r) => {
+              const activeChip = r.id === vehicleType;
+              return (
+                <Pressable
+                  key={r.id}
+                  onPress={() => handleVehicleChange(r.id)}
+                  style={[styles.vehChip, activeChip && styles.vehChipActive]}
+                >
+                  <View
+                    style={[
+                      styles.vehChipIcon,
+                      activeChip && styles.vehChipIconActive,
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={r.icon as any}
+                      size={20}
+                      color={activeChip ? colors.text : colors.textMuted}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.vehChipText,
+                      activeChip && styles.vehChipTextActive,
+                    ]}
+                  >
+                    {ar ? r.nameAr : r.nameEn}
+                  </Text>
+                  <Text style={styles.vehChipMode}>
+                    {r.mode === 'flat'
+                      ? `EGP ${r.flatFee} · ${t('flatRate')}`
+                      : `EGP ${r.perKmFee}${t('perKmShort')}`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+
         {/* Active order banner */}
         {active ? (
           <Pressable
@@ -125,7 +203,7 @@ export default function DriverDashboard() {
         {/* Available orders header */}
         <View style={styles.sectionRow}>
           <Text style={styles.section}>
-            Available pickups{isOnline ? ` · ${available.length}` : ''}
+            Available pickups{isOnline ? ` · ${availableForMe.length}` : ''}
           </Text>
           {isOnline ? (
             <Pressable onPress={refreshQueue} hitSlop={6} style={styles.refreshBtn}>
@@ -148,20 +226,20 @@ export default function DriverDashboard() {
               <Button label="Go online" onPress={() => setOnline(true)} />
             </View>
           </Card>
-        ) : available.length === 0 ? (
+        ) : availableForMe.length === 0 ? (
           <Card>
             <View style={styles.empty}>
               <View style={styles.emptyIcon}>
-                <MaterialIcons name="hourglass-empty" size={26} color={colors.textMuted} />
+                <MaterialIcons name={myRate.icon as any} size={26} color={colors.textMuted} />
               </View>
-              <Text style={styles.emptyTitle}>Waiting for orders</Text>
+              <Text style={styles.emptyTitle}>{t('noVehicleOrders')}</Text>
               <Text style={styles.emptySub}>
-                New requests will appear here automatically.
+                {t('noVehicleOrdersSub')} · {myVehicleName}
               </Text>
             </View>
           </Card>
         ) : (
-          available.map((o) => (
+          availableForMe.map((o) => (
             <AvailableOrderCard
               key={o.id}
               order={o}
@@ -322,6 +400,52 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   refreshText: { ...typography.micro, color: colors.text, fontWeight: '700' },
+  vehHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  vehHeaderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  vehChipRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  vehChip: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  vehChipActive: {
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.primarySoft,
+  },
+  vehChipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehChipIconActive: { backgroundColor: colors.primary },
+  vehChipText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
+  vehChipTextActive: { color: colors.text, fontWeight: '800' },
+  vehChipMode: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
   empty: { alignItems: 'center', padding: spacing.md, gap: spacing.sm },
   emptyIcon: {
     width: 56,

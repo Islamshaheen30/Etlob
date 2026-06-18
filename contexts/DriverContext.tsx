@@ -10,6 +10,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DriverOrder, generateMockDriverOrder } from '@/services/driver';
 import { stepRider } from '@/services/tracking';
+import { VehicleType } from '@/constants/adminSettings';
 
 interface DriverStats {
   totalDeliveries: number;
@@ -21,6 +22,8 @@ interface DriverStats {
 interface DriverContextType {
   isOnline: boolean;
   setOnline: (v: boolean) => void;
+  vehicleType: VehicleType;
+  setVehicleType: (v: VehicleType) => void;
   available: DriverOrder[];
   active: DriverOrder | null;
   history: DriverOrder[];
@@ -41,9 +44,11 @@ const ONLINE_KEY = 'etlob.driver.online.v1';
 const HISTORY_KEY = 'etlob.driver.history.v1';
 const QUEUE_KEY = 'etlob.driver.queue.v1';
 const ACTIVE_KEY = 'etlob.driver.active.v1';
+const VEHICLE_KEY = 'etlob.driver.vehicle.v1';
 
 export function DriverProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(false);
+  const [vehicleType, setVehicleTypeState] = useState<VehicleType>('bicycle');
   const [available, setAvailable] = useState<DriverOrder[]>([]);
   const [active, setActive] = useState<DriverOrder | null>(null);
   const [history, setHistory] = useState<DriverOrder[]>([]);
@@ -55,16 +60,20 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [onl, h, q, a] = await Promise.all([
+        const [onl, h, q, a, v] = await Promise.all([
           AsyncStorage.getItem(ONLINE_KEY),
           AsyncStorage.getItem(HISTORY_KEY),
           AsyncStorage.getItem(QUEUE_KEY),
           AsyncStorage.getItem(ACTIVE_KEY),
+          AsyncStorage.getItem(VEHICLE_KEY),
         ]);
         if (onl === '1') setIsOnline(true);
         if (h) setHistory(JSON.parse(h));
         if (q) setAvailable(JSON.parse(q));
         if (a && a !== 'null') setActive(JSON.parse(a));
+        if (v === 'bicycle' || v === 'motorcycle' || v === 'scooter') {
+          setVehicleTypeState(v);
+        }
       } catch {
         // ignore
       }
@@ -77,6 +86,9 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     if (!loading) AsyncStorage.setItem(ONLINE_KEY, isOnline ? '1' : '0');
   }, [isOnline, loading]);
   useEffect(() => {
+    if (!loading) AsyncStorage.setItem(VEHICLE_KEY, vehicleType);
+  }, [vehicleType, loading]);
+  useEffect(() => {
     if (!loading) AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   }, [history, loading]);
   useEffect(() => {
@@ -86,33 +98,45 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     if (!loading) AsyncStorage.setItem(ACTIVE_KEY, active ? JSON.stringify(active) : 'null');
   }, [active, loading]);
 
-  // Generate mock orders when online
+  // Generate mock orders when online. Re-seeds when the rider switches
+  // vehicle so they immediately see matching pickups.
   useEffect(() => {
     if (queueGenRef.current) clearInterval(queueGenRef.current);
     if (!isOnline) return;
 
     setAvailable((prev) => {
+      const matching = prev.filter((o) => o.vehicleType === vehicleType).length;
+      const need = Math.max(0, 3 - matching);
       if (prev.length === 0) {
         return [
+          generateMockDriverOrder(vehicleType),
+          generateMockDriverOrder(vehicleType),
           generateMockDriverOrder(),
           generateMockDriverOrder(),
           generateMockDriverOrder(),
         ];
+      }
+      if (need > 0) {
+        const additions = Array.from({ length: need }, () =>
+          generateMockDriverOrder(vehicleType)
+        );
+        return [...additions, ...prev].slice(0, 8);
       }
       return prev;
     });
 
     queueGenRef.current = setInterval(() => {
       setAvailable((prev) => {
-        if (prev.length >= 7) return prev;
-        return [generateMockDriverOrder(), ...prev];
+        if (prev.length >= 8) return prev;
+        const force = Math.random() < 0.6 ? vehicleType : undefined;
+        return [generateMockDriverOrder(force), ...prev];
       });
     }, 22000);
 
     return () => {
       if (queueGenRef.current) clearInterval(queueGenRef.current);
     };
-  }, [isOnline]);
+  }, [isOnline, vehicleType]);
 
   // Auto-progress rider position when active order
   useEffect(() => {
@@ -159,9 +183,14 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   const refreshQueue = useCallback(() => {
     if (!isOnline) return;
     setAvailable((prev) =>
-      [generateMockDriverOrder(), generateMockDriverOrder(), ...prev].slice(0, 7)
+      [
+        generateMockDriverOrder(vehicleType),
+        generateMockDriverOrder(vehicleType),
+        generateMockDriverOrder(),
+        ...prev,
+      ].slice(0, 8)
     );
-  }, [isOnline]);
+  }, [isOnline, vehicleType]);
 
   const acceptOrder = useCallback(
     (id: string) => {
@@ -233,10 +262,16 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setVehicleType = useCallback((v: VehicleType) => {
+    setVehicleTypeState(v);
+  }, []);
+
   const value = useMemo(
     () => ({
       isOnline,
       setOnline,
+      vehicleType,
+      setVehicleType,
       available,
       active,
       history,
@@ -253,6 +288,8 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     [
       isOnline,
       setOnline,
+      vehicleType,
+      setVehicleType,
       available,
       active,
       history,

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PaymentMethodId } from '@/constants/config';
+import { VehicleType } from '@/constants/adminSettings';
 import { MenuItem, Restaurant } from '@/constants/mockData';
 
 export type OrderStatus =
@@ -41,6 +42,9 @@ export interface Order {
   customerPosition: { lat: number; lng: number };
   restaurantPosition: { lat: number; lng: number };
   estimatedMinutes: number;
+  // Customer-selected delivery vehicle. Used both for pricing and to route
+  // the order only to riders that operate this vehicle type.
+  vehicleType: VehicleType;
 }
 
 const KEY = 'etlob.orders.v1';
@@ -48,7 +52,10 @@ const KEY = 'etlob.orders.v1';
 export async function loadOrders(): Promise<Order[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Order[]) : [];
+    if (!raw) return [];
+    const list = JSON.parse(raw) as Order[];
+    // Migrate legacy orders that pre-date vehicle selection.
+    return list.map((o) => ({ ...o, vehicleType: o.vehicleType ?? 'bicycle' }));
   } catch {
     return [];
   }
@@ -67,9 +74,12 @@ export function buildOrder(params: {
   notes?: string;
   customerPosition: { lat: number; lng: number };
   freeDelivery?: boolean;
+  vehicleType: VehicleType;
+  vehicleFee: number; // pre-calculated fee for the chosen vehicle
+  estimatedMinutes?: number;
 }): Order {
   const subtotal = params.items.reduce((s, i) => s + i.item.price * i.qty, 0);
-  const deliveryFee = params.freeDelivery ? 0 : params.restaurant.deliveryFee;
+  const deliveryFee = params.freeDelivery ? 0 : params.vehicleFee;
   const discount = 0;
   const total = subtotal + deliveryFee - discount;
   return {
@@ -90,7 +100,8 @@ export function buildOrder(params: {
     customerPosition: params.customerPosition,
     restaurantPosition: params.restaurant.location,
     riderPosition: params.restaurant.location,
-    estimatedMinutes: params.restaurant.etaMin,
+    estimatedMinutes: params.estimatedMinutes ?? params.restaurant.etaMin,
+    vehicleType: params.vehicleType,
     rider: {
       name: 'Ahmed Hassan',
       phone: '+20 100 555 1212',

@@ -7,3 +7,4 @@ export { AvailableOrderCard } from './AvailableOrderCard';
 export { OfferRibbon } from './OfferRibbon';
 export { AddOnsSheet } from './AddOnsSheet';
 export { GeofenceBanner } from './GeofenceBanner';
+export { VehicleSelector } from './VehicleSelector';

@@ -82,3 +82,73 @@ export const DELIVERY_CIRCLES: DeliveryCircle[] = [
 export const BIKE_SPEED_KMH = 18;
 // Minimum ride padding (mins) so very short trips still feel realistic.
 export const MIN_RIDE_MIN = 4;
+
+// === Delivery vehicles ===
+// Admin-managed list of supported delivery vehicles. Both customer-facing
+// pricing and rider order routing read from this list.
+
+export type VehicleType = 'bicycle' | 'motorcycle' | 'scooter';
+
+export interface VehicleRate {
+  id: VehicleType;
+  nameEn: string;
+  nameAr: string;
+  descEn: string;
+  descAr: string;
+  icon: string; // MaterialIcons glyph name
+  // Pricing model: a flat rate OR baseFee + perKmFee (capped to minFee).
+  mode: 'flat' | 'per_km';
+  flatFee?: number;
+  baseFee?: number;
+  perKmFee?: number;
+  minFee?: number;
+  speedKmh: number; // average speed used for ETA estimates
+  active: boolean;
+}
+
+export const VEHICLE_RATES: VehicleRate[] = [
+  {
+    id: 'bicycle',
+    nameEn: 'Bicycle',
+    nameAr: 'دراجة',
+    descEn: 'Eco-friendly · best for short trips',
+    descAr: 'صديقة للبيئة · مثالية للمسافات القصيرة',
+    icon: 'pedal-bike',
+    mode: 'per_km',
+    baseFee: 5,
+    perKmFee: 4,
+    minFee: 8,
+    speedKmh: 18,
+    active: true,
+  },
+  {
+    id: 'motorcycle',
+    nameEn: 'Motorcycle',
+    nameAr: 'دراجة نارية',
+    descEn: 'Fastest · flat city-wide rate',
+    descAr: 'الأسرع · سعر ثابت داخل المدينة',
+    icon: 'two-wheeler',
+    mode: 'flat',
+    flatFee: 35,
+    speedKmh: 38,
+    active: true,
+  },
+  {
+    id: 'scooter',
+    nameEn: 'Scooter',
+    nameAr: 'سكوتر',
+    descEn: 'Balanced · medium price and speed',
+    descAr: 'متوازن · سرعة وسعر متوسطان',
+    icon: 'electric-scooter',
+    mode: 'per_km',
+    baseFee: 8,
+    perKmFee: 5,
+    minFee: 14,
+    speedKmh: 28,
+    active: true,
+  },
+];
+
+export function getVehicleRate(id: VehicleType): VehicleRate {
+  return VEHICLE_RATES.find((v) => v.id === id) || VEHICLE_RATES[0];
+}

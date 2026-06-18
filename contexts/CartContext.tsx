@@ -1,5 +1,6 @@
 import React, { createContext, ReactNode, useCallback, useMemo, useState } from 'react';
 import { MenuItem, Restaurant } from '@/constants/mockData';
+import { VehicleType } from '@/constants/adminSettings';
 
 export interface CartLine {
   item: MenuItem;
@@ -15,6 +16,8 @@ interface CartContextType {
   lines: CartLine[];
   itemCount: number;
   subtotal: number;
+  vehicleType: VehicleType;
+  setVehicleType: (v: VehicleType) => void;
   add: (restaurant: Restaurant, item: MenuItem, qty?: number) => AddResult;
   remove: (itemId: string) => void;
   setQty: (itemId: string, qty: number) => void;
@@ -26,6 +29,7 @@ export const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [lines, setLines] = useState<CartLine[]>([]);
+  const [vehicleType, setVehicleType] = useState<VehicleType>('bicycle');
 
   const add = useCallback(
     (r: Restaurant, item: MenuItem, qty = 1): AddResult => {
@@ -70,14 +74,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(() => {
     setLines([]);
     setRestaurant(null);
+    setVehicleType('bicycle');
   }, []);
 
   const itemCount = useMemo(() => lines.reduce((s, l) => s + l.qty, 0), [lines]);
   const subtotal = useMemo(() => lines.reduce((s, l) => s + l.qty * l.item.price, 0), [lines]);
 
   const value = useMemo(
-    () => ({ restaurant, lines, itemCount, subtotal, add, remove, setQty, clear }),
-    [restaurant, lines, itemCount, subtotal, add, remove, setQty, clear]
+    () => ({
+      restaurant,
+      lines,
+      itemCount,
+      subtotal,
+      vehicleType,
+      setVehicleType,
+      add,
+      remove,
+      setQty,
+      clear,
+    }),
+    [restaurant, lines, itemCount, subtotal, vehicleType, add, remove, setQty, clear]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -4,22 +4,32 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Button, Card, Header, Input, Pill, Screen } from '@/components';
+import { Button, Card, Header, Input, Pill, Screen, VehicleSelector } from '@/components';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrders } from '@/hooks/useOrders';
+import { useLocale } from '@/hooks/useLocale';
 import { useAlert } from '@/template';
 import { PAYMENT_METHODS, PaymentMethodId, SADAT_CENTER } from '@/constants/config';
+import { getVehicleRate } from '@/constants/adminSettings';
 import { buildOrder } from '@/services/orders';
 import { verifyPayment } from '@/services/payment';
+import { distanceKm } from '@/services/tracking';
+import {
+  calculateVehicleFee,
+  estimateVehicleRideMinutes,
+} from '@/services/vehicles';
+import { getEffectiveLocation } from '@/services/geofence';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';
 
 export default function Checkout() {
   const router = useRouter();
-  const { lines, restaurant, subtotal, clear } = useCart();
+  const { lines, restaurant, subtotal, clear, vehicleType, setVehicleType } = useCart();
   const { user, consumeFreeDelivery } = useAuth();
   const { addOrder, updateOrder } = useOrders();
+  const { locale, t } = useLocale();
   const { showAlert } = useAlert();
+  const ar = locale === 'ar';
 
   const [method, setMethod] = useState<PaymentMethodId>('cash');
   const [address, setAddress] = useState(user?.area || '');
@@ -39,10 +49,16 @@ export default function Checkout() {
     );
   }
 
-  const baseFee = restaurant.deliveryFee;
+  const userLoc = getEffectiveLocation(user);
+  const dist = distanceKm(userLoc, restaurant.location);
+  const vehicleRate = getVehicleRate(vehicleType);
+  const baseFee = calculateVehicleFee(vehicleRate, dist);
+  const rideMin = estimateVehicleRideMinutes(vehicleRate, dist);
+  const totalMin = restaurant.prepTimeMin + rideMin;
   const freeDelivery = useFreeDelivery && (user?.freeDeliveries ?? 0) > 0;
   const fee = freeDelivery ? 0 : baseFee;
   const total = subtotal + fee;
+  const vehicleName = ar ? vehicleRate.nameAr : vehicleRate.nameEn;
 
   const pickScreenshot = async () => {
     try {
@@ -88,6 +104,9 @@ export default function Checkout() {
       notes,
       customerPosition: { lat: SADAT_CENTER.lat + 0.003, lng: SADAT_CENTER.lng + 0.002 },
       freeDelivery,
+      vehicleType,
+      vehicleFee: baseFee,
+      estimatedMinutes: totalMin,
     });
     await addOrder(order);
 
@@ -148,6 +167,33 @@ export default function Checkout() {
           <View style={styles.geo}>
             <MaterialIcons name="check-circle" size={14} color={colors.success} />
             <Text style={styles.geoText}>Inside Al-Sadat geofence</Text>
+          </View>
+        </Card>
+
+        {/* Vehicle */}
+        <Card>
+          <View style={styles.vehHeaderRow}>
+            <View style={styles.vehHeaderIcon}>
+              <MaterialIcons name="local-shipping" size={18} color={colors.text} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.section}>{t('chooseVehicle')}</Text>
+              <Text style={styles.vehSub}>{t('chooseVehicleSub')}</Text>
+            </View>
+          </View>
+          <View style={{ height: spacing.md }} />
+          <VehicleSelector
+            distKm={dist}
+            value={vehicleType}
+            onChange={setVehicleType}
+          />
+          <View style={styles.timeBanner}>
+            <MaterialIcons name="schedule" size={14} color={colors.primaryDark} />
+            <Text style={styles.timeBannerText}>
+              {ar
+                ? `${totalMin} دقيقة إجمالاً (${restaurant.prepTimeMin} ${t('prepLabel')} + ${rideMin} ${t('rideLabel')})`
+                : `${totalMin} ${t('totalTime')} (${restaurant.prepTimeMin} ${t('prepLabel')} + ${rideMin} ${t('rideLabel')})`}
+            </Text>
           </View>
         </Card>
 
@@ -217,7 +263,7 @@ export default function Checkout() {
 
         {/* Receipt */}
         <Card>
-          <Text style={styles.section}>Order summary</Text>
+          <Text style={styles.section}>{t('orderSummary')}</Text>
           {lines.map((l) => (
             <View key={l.item.id} style={styles.recRow}>
               <Text style={styles.recLabel}>
@@ -228,18 +274,24 @@ export default function Checkout() {
           ))}
           <View style={styles.divider} />
           <View style={styles.recRow}>
-            <Text style={styles.recLabel}>Subtotal</Text>
+            <Text style={styles.recLabel}>{t('subtotal')}</Text>
             <Text style={styles.recValue}>EGP {subtotal.toFixed(0)}</Text>
           </View>
-          <View style={styles.recRow}>
-            <Text style={styles.recLabel}>Delivery fee</Text>
+          <View style={styles.feeRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.recLabel}>{t('deliveryFeeLabel')}</Text>
+              <Text style={styles.feeMeta}>
+                {t('deliveryVia')} {vehicleName} · {rideMin} {t('minShort')}
+                {dist > 0 ? ` · ${dist.toFixed(1)} km` : ''}
+              </Text>
+            </View>
             <Text style={[styles.recValue, freeDelivery && { color: colors.success }]}>
               {freeDelivery ? 'FREE' : `EGP ${baseFee.toFixed(0)}`}
             </Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.recRow}>
-            <Text style={[styles.recLabel, { color: colors.text, fontWeight: '700' }]}>Total</Text>
+            <Text style={[styles.recLabel, { color: colors.text, fontWeight: '700' }]}>{t('total')}</Text>
             <Text style={[styles.recValue, { ...typography.title }]}>EGP {total.toFixed(0)}</Text>
           </View>
         </Card>
@@ -258,6 +310,29 @@ export default function Checkout() {
 
 const styles = StyleSheet.create({
   section: { ...typography.section, color: colors.text, marginBottom: spacing.sm },
+  vehHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  vehHeaderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  timeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    marginTop: spacing.md,
+  },
+  timeBannerText: { ...typography.micro, color: colors.text, fontWeight: '700', flex: 1 },
+  feeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  feeMeta: { ...typography.micro, color: colors.textMuted, marginTop: 2, fontWeight: '600' },
   geo: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   geoText: { ...typography.caption, color: colors.success, fontWeight: '700' },
   method: {

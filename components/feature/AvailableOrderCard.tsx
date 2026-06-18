@@ -4,6 +4,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { DriverOrder } from '@/services/driver';
+import { getVehicleRate } from '@/constants/adminSettings';
+import { useLocale } from '@/hooks/useLocale';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';
 
 interface Props {
@@ -14,7 +16,11 @@ interface Props {
 }
 
 export function AvailableOrderCard({ order, onAccept, onDecline, disabled }: Props) {
+  const { locale } = useLocale();
+  const ar = locale === 'ar';
   const itemsTotal = order.items.reduce((s, i) => s + i.qty, 0);
+  const rate = getVehicleRate(order.vehicleType);
+  const vehicleName = ar ? rate.nameAr : rate.nameEn;
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -27,6 +33,10 @@ export function AvailableOrderCard({ order, onAccept, onDecline, disabled }: Pro
             {order.restaurant.nameAr}
           </Text>
           <View style={styles.metricsRow}>
+            <View style={styles.vehiclePill}>
+              <MaterialIcons name={rate.icon as any} size={11} color={colors.text} />
+              <Text style={styles.vehiclePillText}>{vehicleName}</Text>
+            </View>
             <Metric icon="straighten" text={`${order.distanceKm.toFixed(1)} km`} />
             <Metric icon="schedule" text={`${order.estimatedMinutes} min`} />
             <Metric
@@ -123,9 +133,23 @@ const styles = StyleSheet.create({
   },
   name: { ...typography.bodyStrong, color: colors.text },
   sub: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
-  metricsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: 6, flexWrap: 'wrap' },
+  metricsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' },
   metric: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metricText: { ...typography.micro, color: colors.textMuted, fontWeight: '700' },
+  vehiclePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  vehiclePillText: {
+    ...typography.micro,
+    color: colors.text,
+    fontWeight: '800',
+  },
   earningsBadge: {
     backgroundColor: colors.primarySoft,
     paddingHorizontal: spacing.md,

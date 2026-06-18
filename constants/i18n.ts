@@ -50,6 +50,38 @@ export const STRINGS = {
     en: 'Useful for testing the geofencing flow.',
     ar: 'مفيد لاختبار تدفق التحقق الجغرافي.',
   },
+  // Vehicle selection
+  chooseVehicle: { en: 'Choose delivery vehicle', ar: 'اختر مركبة التوصيل' },
+  chooseVehicleSub: {
+    en: 'Pricing varies by vehicle and distance',
+    ar: 'تختلف الأسعار حسب نوع المركبة والمسافة',
+  },
+  vehicleBicycle: { en: 'Bicycle', ar: 'دراجة' },
+  vehicleMotorcycle: { en: 'Motorcycle', ar: 'دراجة نارية' },
+  vehicleScooter: { en: 'Scooter', ar: 'سكوتر' },
+  fastestTag: { en: 'Fastest', ar: 'الأسرع' },
+  ecoTag: { en: 'Eco', ar: 'صديقة للبيئة' },
+  balancedTag: { en: 'Balanced', ar: 'متوازن' },
+  flatRate: { en: 'Flat rate', ar: 'سعر ثابت' },
+  perKmShort: { en: '/km', ar: '/كم' },
+  minShort: { en: 'min', ar: 'د' },
+  deliveryVia: { en: 'Delivery via', ar: 'التوصيل بـ' },
+  yourVehicle: { en: 'Your vehicle', ar: 'مركبتك' },
+  selectVehicle: { en: 'Select your vehicle', ar: 'اختر مركبتك' },
+  selectVehicleSub: {
+    en: 'You will only receive orders matching your vehicle type',
+    ar: 'سترى فقط الطلبات المطابقة لنوع مركبتك',
+  },
+  noVehicleOrders: { en: 'No orders for your vehicle', ar: 'لا توجد طلبات لمركبتك' },
+  noVehicleOrdersSub: {
+    en: 'New requests will appear here automatically',
+    ar: 'ستظهر الطلبات الجديدة هنا تلقائياً',
+  },
+  change: { en: 'Change', ar: 'تغيير' },
+  subtotal: { en: 'Subtotal', ar: 'الإجمالي الفرعي' },
+  deliveryFeeLabel: { en: 'Delivery fee', ar: 'رسوم التوصيل' },
+  receipt: { en: 'Receipt', ar: 'الفاتورة' },
+  orderSummary: { en: 'Order summary', ar: 'ملخص الطلب' },
 };
 
 export type StringKey = keyof typeof STRINGS;
