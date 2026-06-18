@@ -10,6 +10,9 @@ export interface UserProfile {
   referredCount: number;
   freeDeliveries: number;
   isDriver?: boolean;
+  // When true, treats the user as if they were physically outside the
+  // delivery zones — useful for QA/testing the geofence flow.
+  simulateOutsideZone?: boolean;
   createdAt: number;
 }
 
@@ -49,6 +52,7 @@ export function createUser(input: { name: string; phone: string; email?: string;
     referredCount: 0,
     freeDeliveries: 0,
     isDriver: false,
+    simulateOutsideZone: false,
     createdAt: Date.now(),
   };
 }

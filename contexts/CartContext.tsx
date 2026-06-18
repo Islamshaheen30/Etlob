@@ -6,12 +6,16 @@ export interface CartLine {
   qty: number;
 }
 
+export type AddResult =
+  | { ok: true }
+  | { ok: false; code: 'different_restaurant'; currentRestaurant: Restaurant };
+
 interface CartContextType {
   restaurant: Restaurant | null;
   lines: CartLine[];
   itemCount: number;
   subtotal: number;
-  add: (restaurant: Restaurant, item: MenuItem, qty?: number) => { ok: boolean; reason?: string };
+  add: (restaurant: Restaurant, item: MenuItem, qty?: number) => AddResult;
   remove: (itemId: string) => void;
   setQty: (itemId: string, qty: number) => void;
   clear: () => void;
@@ -24,11 +28,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
 
   const add = useCallback(
-    (r: Restaurant, item: MenuItem, qty = 1) => {
+    (r: Restaurant, item: MenuItem, qty = 1): AddResult => {
       if (restaurant && restaurant.id !== r.id) {
         return {
           ok: false,
-          reason: 'Cart contains items from another restaurant. Clear it first to add from a new place.',
+          code: 'different_restaurant',
+          currentRestaurant: restaurant,
         };
       }
       setRestaurant(r);

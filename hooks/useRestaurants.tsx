@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { listCuisines, searchRestaurants } from '@/services/restaurants';
+import { getRestaurantsWithOffers, listCuisines, searchRestaurants } from '@/services/restaurants';
 import { Restaurant } from '@/constants/mockData';
 
 export function useRestaurants() {
@@ -14,5 +14,15 @@ export function useRestaurants() {
     return list;
   }, [query, cuisine]);
 
-  return { query, setQuery, cuisine, setCuisine, cuisines, restaurants };
+  const offerRestaurants: Restaurant[] = useMemo(() => getRestaurantsWithOffers(), []);
+
+  return {
+    query,
+    setQuery,
+    cuisine,
+    setCuisine,
+    cuisines,
+    restaurants,
+    offerRestaurants,
+  };
 }

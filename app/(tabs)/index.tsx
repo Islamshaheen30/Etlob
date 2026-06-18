@@ -1,20 +1,33 @@
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { CategoryBar, Pill, RestaurantCard, Screen } from '@/components';
+import {
+  CategoryBar,
+  GeofenceBanner,
+  OfferRibbon,
+  Pill,
+  RestaurantCard,
+  Screen,
+} from '@/components';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocale } from '@/hooks/useLocale';
 import { useRestaurants } from '@/hooks/useRestaurants';
 import { useOrders } from '@/hooks/useOrders';
+import { userIsInDeliveryArea } from '@/services/geofence';
 import { APP } from '@/constants/config';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';
 
 export default function HomeTab() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { restaurants, cuisine, setCuisine, cuisines, query, setQuery } = useRestaurants();
+  const { locale, t } = useLocale();
+  const { restaurants, cuisine, setCuisine, cuisines, query, setQuery, offerRestaurants } =
+    useRestaurants();
   const { orders } = useOrders();
+  const ar = locale === 'ar';
+
+  const inArea = useMemo(() => userIsInDeliveryArea(user), [user]);
 
   const activeOrder = useMemo(
     () =>
@@ -24,10 +37,44 @@ export default function HomeTab() {
     [orders]
   );
 
-  const featured = useMemo(() => restaurants.slice(0, 4), [restaurants]);
+  const featured = useMemo(() => restaurants.filter((r) => r.status === 'open').slice(0, 4), [restaurants]);
 
   if (loading) return null;
   if (!user) return <Redirect href="/" />;
+
+  // Out-of-area users get a dedicated screen.
+  if (!inArea) {
+    return (
+      <Screen>
+        <ScrollView contentContainerStyle={styles.outerScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.greetingRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.hello}>
+                {t('hello')}, {user.name.split(' ')[0]}
+              </Text>
+              <View style={styles.locRow}>
+                <MaterialIcons name="location-on" size={14} color={colors.danger} />
+                <Text style={[styles.locText, { color: colors.danger }]}>
+                  {ar ? 'خارج منطقة الخدمة' : 'Outside service area'}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => router.push('/(tabs)/profile')}
+              style={styles.avatar}
+              hitSlop={8}
+            >
+              <Text style={styles.avatarText}>{user.name.charAt(0).toUpperCase()}</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ marginTop: spacing.lg }}>
+            <GeofenceBanner onActionPress={() => router.push('/(tabs)/profile')} />
+          </View>
+        </ScrollView>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -41,7 +88,9 @@ export default function HomeTab() {
             {/* Greeting */}
             <View style={styles.greetingRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.hello}>Hello, {user.name.split(' ')[0]}</Text>
+                <Text style={styles.hello}>
+                  {t('hello')}, {user.name.split(' ')[0]}
+                </Text>
                 <View style={styles.locRow}>
                   <MaterialIcons name="location-on" size={14} color={colors.primaryDark} />
                   <Text style={styles.locText}>
@@ -69,7 +118,7 @@ export default function HomeTab() {
                   style={[styles.searchInput, !query && { color: colors.textSubtle }]}
                   onPress={() => {}}
                 >
-                  {query || 'Search restaurants or cuisines'}
+                  {query || t('searchHint')}
                 </Text>
               </Pressable>
               {query ? (
@@ -89,7 +138,9 @@ export default function HomeTab() {
                   <MaterialIcons name="pedal-bike" size={20} color={colors.text} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.activeTitle}>Order in progress</Text>
+                  <Text style={styles.activeTitle}>
+                    {ar ? 'طلب قيد التنفيذ' : 'Order in progress'}
+                  </Text>
                   <Text style={styles.activeSub}>
                     {activeOrder.restaurant.name} · ETA {activeOrder.estimatedMinutes} min
                   </Text>
@@ -102,15 +153,23 @@ export default function HomeTab() {
             <View style={styles.hero}>
               <View style={{ flex: 1, padding: spacing.lg }}>
                 <Pill label={`${APP.city} only`} tone="neutral" />
-                <Text style={styles.heroTitle}>Free delivery on{'\n'}every 10 referrals</Text>
+                <Text style={styles.heroTitle}>
+                  {ar
+                    ? 'توصيل مجاني\nمع كل 10 دعوات'
+                    : 'Free delivery on\nevery 10 referrals'}
+                </Text>
                 <Text style={styles.heroSub}>
-                  Free deliveries: {user.freeDeliveries} · Friends invited: {user.referredCount}
+                  {ar
+                    ? `توصيلات مجانية: ${user.freeDeliveries} · أصدقاء: ${user.referredCount}`
+                    : `Free deliveries: ${user.freeDeliveries} · Friends invited: ${user.referredCount}`}
                 </Text>
                 <Pressable
                   onPress={() => router.push('/(tabs)/profile')}
                   style={styles.heroBtn}
                 >
-                  <Text style={styles.heroBtnText}>Get my code</Text>
+                  <Text style={styles.heroBtnText}>
+                    {ar ? 'كود الدعوة' : 'Get my code'}
+                  </Text>
                   <MaterialIcons name="chevron-right" size={16} color={colors.text} />
                 </Pressable>
               </View>
@@ -120,28 +179,34 @@ export default function HomeTab() {
             </View>
 
             {/* Featured rail */}
-            <View style={{ marginTop: spacing.sm }}>
-              <Text style={styles.section}>Featured in {APP.city}</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: spacing.md, paddingHorizontal: 2, paddingVertical: 4 }}
-              >
-                {featured.map((r) => (
-                  <RestaurantCard
-                    key={`f-${r.id}`}
-                    restaurant={r}
-                    featured
-                    onPress={() => router.push(`/restaurant/${r.id}`)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+            {featured.length > 0 ? (
+              <View style={{ marginTop: spacing.sm }}>
+                <Text style={styles.section}>{t('featured')}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{
+                    gap: spacing.md,
+                    paddingHorizontal: 2,
+                    paddingVertical: 4,
+                  }}
+                >
+                  {featured.map((r) => (
+                    <RestaurantCard
+                      key={`f-${r.id}`}
+                      restaurant={r}
+                      featured
+                      onPress={() => router.push(`/restaurant/${r.id}`)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
 
             {/* Categories */}
-            <Text style={[styles.section, { marginTop: spacing.sm }]}>Browse by cuisine</Text>
+            <Text style={[styles.section, { marginTop: spacing.sm }]}>{t('cuisines')}</Text>
             <CategoryBar options={cuisines} value={cuisine} onChange={setCuisine} />
-            <Text style={[styles.section, { marginTop: spacing.sm }]}>All restaurants</Text>
+            <Text style={[styles.section, { marginTop: spacing.sm }]}>{t('allRestaurants')}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -152,8 +217,37 @@ export default function HomeTab() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No restaurants found.</Text>
+            <Text style={styles.emptyText}>
+              {ar ? 'لم يتم العثور على مطاعم.' : 'No restaurants found.'}
+            </Text>
           </View>
+        }
+        ListFooterComponent={
+          offerRestaurants.length > 0 ? (
+            <View style={styles.offersSection}>
+              <View style={styles.offersHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.offersTitleRow}>
+                    <View style={styles.offersIcon}>
+                      <MaterialIcons name="local-offer" size={16} color={colors.text} />
+                    </View>
+                    <Text style={styles.section}>{t('specialOffers')}</Text>
+                  </View>
+                  <Text style={styles.offersSub}>{t('specialOffersSub')}</Text>
+                </View>
+                <Pill label={`${offerRestaurants.length}`} tone="warning" />
+              </View>
+              <View style={{ gap: spacing.md }}>
+                {offerRestaurants.map((r) => (
+                  <OfferRibbon
+                    key={`o-${r.id}`}
+                    restaurant={r}
+                    onPress={() => router.push(`/restaurant/${r.id}`)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null
         }
       />
     </Screen>
@@ -161,6 +255,7 @@ export default function HomeTab() {
 }
 
 const styles = StyleSheet.create({
+  outerScroll: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hello: { ...typography.title, color: colors.text },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
@@ -231,4 +326,20 @@ const styles = StyleSheet.create({
   section: { ...typography.section, color: colors.text },
   empty: { padding: spacing.xl, alignItems: 'center' },
   emptyText: { ...typography.body, color: colors.textMuted },
+  offersSection: { marginTop: spacing.xl, gap: spacing.md },
+  offersHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  offersTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  offersIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offersSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 });

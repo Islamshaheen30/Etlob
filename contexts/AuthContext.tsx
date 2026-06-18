@@ -9,6 +9,8 @@ interface AuthContextType {
   applyReferral: () => Promise<void>;
   consumeFreeDelivery: () => Promise<void>;
   setDriverMode: (on: boolean) => Promise<void>;
+  setSimulateOutsideZone: (on: boolean) => Promise<void>;
+  setArea: (area: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,9 +71,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  const setSimulateOutsideZone = useCallback(
+    async (on: boolean) => {
+      if (!user) return;
+      const updated: UserProfile = { ...user, simulateOutsideZone: on };
+      await saveUser(updated);
+      setUser(updated);
+    },
+    [user]
+  );
+
+  const setArea = useCallback(
+    async (area: string) => {
+      if (!user) return;
+      const updated: UserProfile = { ...user, area };
+      await saveUser(updated);
+      setUser(updated);
+    },
+    [user]
+  );
+
   const value = useMemo(
-    () => ({ user, loading, login, logout, applyReferral, consumeFreeDelivery, setDriverMode }),
-    [user, loading, login, logout, applyReferral, consumeFreeDelivery, setDriverMode]
+    () => ({
+      user,
+      loading,
+      login,
+      logout,
+      applyReferral,
+      consumeFreeDelivery,
+      setDriverMode,
+      setSimulateOutsideZone,
+      setArea,
+    }),
+    [
+      user,
+      loading,
+      login,
+      logout,
+      applyReferral,
+      consumeFreeDelivery,
+      setDriverMode,
+      setSimulateOutsideZone,
+      setArea,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
