@@ -20,7 +20,7 @@ import { useLocale } from '@/hooks/useLocale';
 import { useAlert } from '@/template';
 import { PAYMENT_METHODS, PaymentMethodId, SADAT_CENTER } from '@/constants/config';
 import { getVehicleRate } from '@/constants/adminSettings';
-import { buildOrder } from '@/services/orders';
+import { buildOrderRow, createOrderInDb } from '@/services/orders';
 import { verifyPayment } from '@/services/payment';
 import { distanceKm } from '@/services/tracking';
 import {
@@ -70,6 +70,11 @@ export default function Checkout() {
   const fee = freeDelivery ? 0 : baseFee;
   const total = subtotal + fee;
   const vehicleName = vehicleRate.nameAr;
+  const customerPosition =
+    user?.addressLocation || {
+      lat: SADAT_CENTER.lat + 0.003,
+      lng: SADAT_CENTER.lng + 0.002,
+    };
 
   const pickScreenshot = async () => {
     try {
@@ -110,33 +115,51 @@ export default function Checkout() {
     setSubmitting(true);
     if (freeDelivery) await consumeFreeDelivery();
 
-    const order = buildOrder({
+    const row = buildOrderRow({
       userId: user.id,
       restaurant,
       items: lines,
       paymentMethod: method,
       address: `${address}, ${user.area}`,
       notes,
-      customerPosition: user.addressLocation || {
-        lat: SADAT_CENTER.lat + 0.003,
-        lng: SADAT_CENTER.lng + 0.002,
-      },
+      customerPosition,
+      customerName: user.name,
+      customerPhone: user.phone,
       freeDelivery,
       vehicleType,
       vehicleFee: baseFee,
       estimatedMinutes: totalMin,
     });
-    await addOrder(order);
+
+    const { data: createdOrder, error: createErr } = await createOrderInDb(row);
+    if (createErr || !createdOrder) {
+      setSubmitting(false);
+      showAlert('فشل إرسال الطلب', createErr || 'يرجى المحاولة مرة أخرى.');
+      return;
+    }
+
+    // Inject the up-to-date estimated time + restaurant geo since DB
+    // doesn't store these for the customer's mock.
+    const enriched = {
+      ...createdOrder,
+      estimatedMinutes: totalMin,
+      restaurantPosition: restaurant.location,
+      riderPosition: restaurant.location,
+    };
+    await addOrder(enriched);
 
     if (requiresProof) {
-      await updateOrder(order.id, { status: 'verifying', paymentProof: { uri: screenshotUri, verified: false } });
+      await updateOrder(enriched.id, {
+        status: 'verifying',
+        paymentProof: { uri: screenshotUri, verified: false },
+      });
       const result = await verifyPayment({
         method: method as 'vodafone' | 'instapay',
         expectedAmount: total,
         screenshotUri,
       });
       if (result.verified) {
-        await updateOrder(order.id, {
+        await updateOrder(enriched.id, {
           status: 'confirmed',
           paymentProof: {
             uri: screenshotUri,
@@ -146,7 +169,7 @@ export default function Checkout() {
           },
         });
       } else {
-        await updateOrder(order.id, { status: 'pending_payment' });
+        await updateOrder(enriched.id, { status: 'pending_payment' });
         setSubmitting(false);
         showAlert(t('verificationFailed'), result.reason);
         return;
@@ -156,7 +179,7 @@ export default function Checkout() {
     clear();
     setSubmitting(false);
     showAlert(t('orderPlaced'), t('trackLive'), [
-      { text: t('trackNow'), onPress: () => router.replace(`/track/${order.id}`) },
+      { text: t('trackNow'), onPress: () => router.replace(`/track/${enriched.id}`) },
     ]);
   };
 
@@ -164,7 +187,6 @@ export default function Checkout() {
     <Screen>
       <Header title={t('checkout')} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 140 }}>
-        {/* Address */}
         <Card>
           <Text style={styles.section}>{t('deliveryTo')}</Text>
           <Pressable onPress={() => setPickerVisible(true)} style={styles.addressTrigger}>
@@ -175,6 +197,11 @@ export default function Checkout() {
               ) : (
                 <Text style={styles.addressPlaceholder}>{t('pickAddress')}</Text>
               )}
+              {user?.addressLocation ? (
+                <Text style={styles.addressCoord}>
+                  {user.addressLocation.lat.toFixed(4)}, {user.addressLocation.lng.toFixed(4)}
+                </Text>
+              ) : null}
             </View>
             <MaterialIcons name="edit-location-alt" size={18} color={colors.textMuted} />
           </Pressable>
@@ -191,7 +218,6 @@ export default function Checkout() {
           </View>
         </Card>
 
-        {/* Vehicle */}
         <Card>
           <View style={styles.vehHeaderRow}>
             <View style={styles.vehHeaderIcon}>
@@ -212,7 +238,6 @@ export default function Checkout() {
           </View>
         </Card>
 
-        {/* Payment */}
         <Card>
           <Text style={styles.section}>{t('paymentMethod')}</Text>
           <View style={{ gap: spacing.sm }}>
@@ -258,7 +283,6 @@ export default function Checkout() {
           ) : null}
         </Card>
 
-        {/* Free delivery */}
         {(user?.freeDeliveries ?? 0) > 0 ? (
           <Card>
             <Pressable onPress={() => setUseFreeDelivery((v) => !v)} style={styles.freeRow}>
@@ -274,7 +298,6 @@ export default function Checkout() {
           </Card>
         ) : null}
 
-        {/* Receipt */}
         <Card>
           <Text style={styles.section}>{t('orderSummary')}</Text>
           {lines.map((l) => (
@@ -336,6 +359,7 @@ const styles = StyleSheet.create({
   },
   addressText: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
   addressPlaceholder: { ...typography.body, color: colors.textSubtle, textAlign: 'right' },
+  addressCoord: { ...typography.micro, color: colors.textMuted, textAlign: 'right', marginTop: 2 },
   vehHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   vehHeaderIcon: {
     width: 38, height: 38, borderRadius: 19,

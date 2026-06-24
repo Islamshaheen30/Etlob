@@ -1,20 +1,26 @@
 import { useMemo, useState } from 'react';
-import { getRestaurantsWithOffers, listCuisines, searchRestaurants } from '@/services/restaurants';
+import { useRestaurantsData } from '@/contexts/RestaurantsContext';
 import { Restaurant } from '@/constants/mockData';
+import {
+  cuisinesFromList,
+  searchInList,
+  withOffers,
+} from '@/services/restaurants';
 
 export function useRestaurants() {
+  const { restaurants: all, loading, error, refresh } = useRestaurantsData();
   const [query, setQuery] = useState('');
   const [cuisine, setCuisine] = useState<string>('All');
 
-  const cuisines = useMemo(() => ['All', ...listCuisines()], []);
+  const cuisines = useMemo(() => ['All', ...cuisinesFromList(all)], [all]);
 
   const restaurants: Restaurant[] = useMemo(() => {
-    let list = searchRestaurants(query);
+    let list = searchInList(all, query);
     if (cuisine !== 'All') list = list.filter((r) => r.cuisine === cuisine);
     return list;
-  }, [query, cuisine]);
+  }, [all, query, cuisine]);
 
-  const offerRestaurants: Restaurant[] = useMemo(() => getRestaurantsWithOffers(), []);
+  const offerRestaurants: Restaurant[] = useMemo(() => withOffers(all), [all]);
 
   return {
     query,
@@ -24,5 +30,8 @@ export function useRestaurants() {
     cuisines,
     restaurants,
     offerRestaurants,
+    loading,
+    error,
+    refresh,
   };
 }

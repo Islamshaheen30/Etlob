@@ -1,61 +1,39 @@
-// Restaurant queries — all data sourced through the admin layer.
+// Pure helper functions over restaurant/menu lists.
+// All live data is sourced from `contexts/RestaurantsContext` which calls
+// Supabase (`restaurants` and `menu_items` tables). These helpers are
+// stateless — they operate on whatever list a caller hands them.
 
 import { MenuItem, Restaurant } from '@/constants/mockData';
-import {
-  fetchAdminCuisines,
-  fetchAdminMenuByRestaurant,
-  fetchAdminMenuItem,
-  fetchAdminRestaurantById,
-  fetchAdminRestaurants,
-  fetchAdminRestaurantsWithOffers,
-} from './admin';
 
-export function getRestaurants(): Restaurant[] {
-  return fetchAdminRestaurants();
-}
-
-export function getRestaurantById(id: string): Restaurant | undefined {
-  return fetchAdminRestaurantById(id);
-}
-
-export function getMenuByRestaurant(restaurantId: string): MenuItem[] {
-  return fetchAdminMenuByRestaurant(restaurantId);
-}
-
-export function getMenuItemById(id: string): MenuItem | undefined {
-  return fetchAdminMenuItem(id);
-}
-
-export function searchRestaurants(query: string): Restaurant[] {
-  const all = fetchAdminRestaurants();
+export function searchInList(list: Restaurant[], query: string): Restaurant[] {
   const q = query.trim().toLowerCase();
-  if (!q) return all;
-  return all.filter(
+  if (!q) return list;
+  return list.filter(
     (r) =>
       r.name.toLowerCase().includes(q) ||
       r.nameAr.includes(q) ||
       r.cuisine.toLowerCase().includes(q) ||
-      r.tags.some((t) => t.toLowerCase().includes(q))
+      (r.tags || []).some((t) => t.toLowerCase().includes(q))
   );
 }
 
-export function listCuisines(): string[] {
-  return fetchAdminCuisines();
+export function cuisinesFromList(list: Restaurant[]): string[] {
+  const set = new Set<string>();
+  list.forEach((r) => set.add(r.cuisine));
+  return Array.from(set);
 }
 
-// Restaurants with active offers — used for the home Offers strip.
-export function getRestaurantsWithOffers(): Restaurant[] {
-  return fetchAdminRestaurantsWithOffers();
+export function withOffers(list: Restaurant[]): Restaurant[] {
+  return list.filter((r) => !!r.offer);
 }
 
-// Suggest add-ons from the same restaurant, excluding items already in
-// cart or the main item being added.
-export function suggestAddOns(
-  restaurantId: string,
+// Suggest add-ons from a restaurant's menu, excluding items already in cart
+// or the main item being added.
+export function suggestAddOnsFromMenu(
+  menu: MenuItem[],
   excludeIds: string[] = [],
   max = 4
 ): MenuItem[] {
-  const menu = fetchAdminMenuByRestaurant(restaurantId);
   const exclude = new Set(excludeIds);
   return menu.filter((m) => m.isAddon && !exclude.has(m.id)).slice(0, max);
 }

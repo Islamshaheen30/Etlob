@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,11 +14,8 @@ import { useCart } from '@/hooks/useCart';
 import { useLocale } from '@/hooks/useLocale';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlert } from '@/template';
-import {
-  getMenuByRestaurant,
-  getRestaurantById,
-  suggestAddOns,
-} from '@/services/restaurants';
+import { useRestaurantsData } from '@/contexts/RestaurantsContext';
+import { suggestAddOnsFromMenu } from '@/services/restaurants';
 import { distanceKm, getTotalDeliveryMinutes } from '@/services/tracking';
 import { getEffectiveLocation } from '@/services/geofence';
 import { SINGLE_RESTAURANT_WARNING } from '@/constants/adminSettings';
@@ -40,9 +37,17 @@ export default function RestaurantDetail() {
     clear,
     add,
   } = useCart();
+  const { getRestaurantById, getMenuByRestaurant, loading } =
+    useRestaurantsData();
 
-  const restaurant = useMemo(() => getRestaurantById(id || ''), [id]);
-  const menu = useMemo(() => getMenuByRestaurant(id || ''), [id]);
+  const restaurant = useMemo(
+    () => getRestaurantById(id || ''),
+    [id, getRestaurantById]
+  );
+  const menu = useMemo(
+    () => getMenuByRestaurant(id || ''),
+    [id, getMenuByRestaurant]
+  );
 
   const [category, setCategory] = useState<string>('All');
   const [pendingItem, setPendingItem] = useState<MenuItem | null>(null);
@@ -67,8 +72,19 @@ export default function RestaurantDetail() {
   const cartItemIds = useMemo(() => lines.map((l) => l.item.id), [lines]);
   const sheetSuggestions = useMemo(() => {
     if (!pendingItem || !restaurant) return [];
-    return suggestAddOns(restaurant.id, [...cartItemIds, pendingItem.id], 4);
-  }, [pendingItem, restaurant, cartItemIds]);
+    return suggestAddOnsFromMenu(menu, [...cartItemIds, pendingItem.id], 4);
+  }, [pendingItem, restaurant, cartItemIds, menu]);
+
+  if (loading && !restaurant) {
+    return (
+      <Screen>
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.primaryDark} />
+          <Text style={styles.loadingText}>جاري تحميل المطعم...</Text>
+        </View>
+      </Screen>
+    );
+  }
 
   if (!restaurant) {
     return (
@@ -144,7 +160,6 @@ export default function RestaurantDetail() {
         contentContainerStyle={{ paddingBottom: 140 }}
         ListHeaderComponent={
           <View>
-            {/* Cover */}
             <View style={styles.coverWrap}>
               <Image
                 source={{ uri: restaurant.cover }}
@@ -236,7 +251,9 @@ export default function RestaurantDetail() {
               <Text style={styles.section}>{t('menu')}</Text>
             </View>
 
-            <CategoryBar options={categories} value={category} onChange={setCategory} />
+            {categories.length > 1 ? (
+              <CategoryBar options={categories} value={category} onChange={setCategory} />
+            ) : null}
           </View>
         }
         renderItem={({ item }) => (
@@ -251,6 +268,18 @@ export default function RestaurantDetail() {
             />
           </View>
         )}
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={colors.primaryDark} />
+              <Text style={styles.loadingText}>جاري تحميل القائمة...</Text>
+            </View>
+          ) : (
+            <View style={styles.center}>
+              <Text style={styles.loadingText}>لا توجد عناصر في القائمة.</Text>
+            </View>
+          )
+        }
       />
 
       {itemCount > 0 && !isCartFromOther && !isBusy ? (
@@ -287,6 +316,8 @@ function Info({ icon, text }: { icon: any; text: string }) {
 }
 
 const styles = StyleSheet.create({
+  center: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
+  loadingText: { ...typography.caption, color: colors.textMuted },
   coverWrap: { height: 240, backgroundColor: colors.surfaceMuted },
   cover: { width: '100%', height: '100%' },
   coverOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },

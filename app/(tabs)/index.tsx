@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -31,8 +32,17 @@ export default function HomeTab() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { t } = useLocale();
-  const { restaurants, cuisine, setCuisine, cuisines, query, setQuery, offerRestaurants } =
-    useRestaurants();
+  const {
+    restaurants,
+    cuisine,
+    setCuisine,
+    cuisines,
+    query,
+    setQuery,
+    offerRestaurants,
+    loading: restaurantsLoading,
+    refresh,
+  } = useRestaurants();
   const { orders } = useOrders();
   const [focusedSearch, setFocusedSearch] = useState(false);
 
@@ -41,12 +51,18 @@ export default function HomeTab() {
   const activeOrder = useMemo(
     () =>
       orders.find(
-        (o) => o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'pending_payment'
+        (o) =>
+          o.status !== 'delivered' &&
+          o.status !== 'cancelled' &&
+          o.status !== 'pending_payment'
       ),
     [orders]
   );
 
-  const featured = useMemo(() => restaurants.filter((r) => r.status === 'open').slice(0, 4), [restaurants]);
+  const featured = useMemo(
+    () => restaurants.filter((r) => r.status === 'open').slice(0, 4),
+    [restaurants]
+  );
 
   if (loading) return null;
   if (!user) return <Redirect href="/" />;
@@ -62,7 +78,9 @@ export default function HomeTab() {
               </Text>
               <View style={styles.locRow}>
                 <MaterialIcons name="location-on" size={14} color={colors.danger} />
-                <Text style={[styles.locText, { color: colors.danger }]}>{t('outsideArea')}</Text>
+                <Text style={[styles.locText, { color: colors.danger }]}>
+                  {t('outsideArea')}
+                </Text>
               </View>
             </View>
             <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.avatar} hitSlop={8}>
@@ -83,11 +101,16 @@ export default function HomeTab() {
       <FlatList
         data={restaurants}
         keyExtractor={(r) => r.id}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md }}
+        contentContainerStyle={{
+          padding: spacing.lg,
+          paddingBottom: spacing.xxxl,
+          gap: spacing.md,
+        }}
         showsVerticalScrollIndicator={false}
+        refreshing={restaurantsLoading}
+        onRefresh={refresh}
         ListHeaderComponent={
           <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
-            {/* Greeting */}
             <View style={styles.greetingRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.hello}>
@@ -105,7 +128,6 @@ export default function HomeTab() {
               </Pressable>
             </View>
 
-            {/* Search */}
             <View style={[styles.search, focusedSearch && styles.searchFocused]}>
               <MaterialIcons name="search" size={18} color={colors.textMuted} />
               <TextInput
@@ -126,7 +148,6 @@ export default function HomeTab() {
               ) : null}
             </View>
 
-            {/* Active order banner */}
             {activeOrder ? (
               <Pressable
                 onPress={() => router.push(`/track/${activeOrder.id}`)}
@@ -145,7 +166,6 @@ export default function HomeTab() {
               </Pressable>
             ) : null}
 
-            {/* Auto-scrolling admin-controlled advertising banner */}
             <AdBanner
               height={180}
               onPressBanner={(b) => {
@@ -153,7 +173,13 @@ export default function HomeTab() {
               }}
             />
 
-            {/* Featured rail */}
+            {restaurantsLoading && restaurants.length === 0 ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator color={colors.primaryDark} />
+                <Text style={styles.loadingText}>جاري تحميل المطاعم...</Text>
+              </View>
+            ) : null}
+
             {featured.length > 0 ? (
               <View style={{ marginTop: spacing.sm }}>
                 <Text style={styles.section}>{t('featured')}</Text>
@@ -178,10 +204,17 @@ export default function HomeTab() {
               </View>
             ) : null}
 
-            {/* Categories */}
-            <Text style={[styles.section, { marginTop: spacing.sm }]}>{t('cuisines')}</Text>
-            <CategoryBar options={cuisines} value={cuisine} onChange={setCuisine} />
-            <Text style={[styles.section, { marginTop: spacing.sm }]}>{t('allRestaurants')}</Text>
+            {restaurants.length > 0 ? (
+              <>
+                <Text style={[styles.section, { marginTop: spacing.sm }]}>
+                  {t('cuisines')}
+                </Text>
+                <CategoryBar options={cuisines} value={cuisine} onChange={setCuisine} />
+                <Text style={[styles.section, { marginTop: spacing.sm }]}>
+                  {t('allRestaurants')}
+                </Text>
+              </>
+            ) : null}
           </View>
         }
         renderItem={({ item }) => (
@@ -191,9 +224,11 @@ export default function HomeTab() {
           />
         )}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>لم يتم العثور على مطاعم.</Text>
-          </View>
+          !restaurantsLoading ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>لم يتم العثور على مطاعم.</Text>
+            </View>
+          ) : null
         }
         ListFooterComponent={
           offerRestaurants.length > 0 ? (
@@ -278,6 +313,12 @@ const styles = StyleSheet.create({
   section: { ...typography.section, color: colors.text, textAlign: 'right' },
   empty: { padding: spacing.xl, alignItems: 'center' },
   emptyText: { ...typography.body, color: colors.textMuted },
+  loadingBox: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  loadingText: { ...typography.caption, color: colors.textMuted },
   offersSection: { marginTop: spacing.xl, gap: spacing.md },
   offersHeader: {
     flexDirection: 'row',

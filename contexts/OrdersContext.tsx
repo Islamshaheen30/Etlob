@@ -1,6 +1,29 @@
-import React, { createContext, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { loadOrders, Order, OrderStatus, progressOrderStatus, saveOrders } from '@/services/orders';
+// Orders state backed by Supabase, with a Postgres realtime subscription
+// for live status updates. The local rider simulator advances status every
+// few seconds and pushes it through Supabase so the realtime channel
+// demonstrates live tracking.
+
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { getSupabaseClient } from '@/template';
+import {
+  fetchOrdersForCustomer,
+  mapOrderRow,
+  Order,
+  OrderStatus,
+  orderPatchToRow,
+  progressOrderStatus,
+  updateOrderInDb,
+} from '@/services/orders';
 import { stepRider } from '@/services/tracking';
+import { useAuth } from '@/hooks/useAuth';
 
 interface OrdersContextType {
   orders: Order[];
@@ -11,58 +34,127 @@ interface OrdersContextType {
   getById: (id: string) => Order | undefined;
 }
 
-export const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
+export const OrdersContext = createContext<OrdersContextType | undefined>(
+  undefined
+);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const channelRef = useRef<any>(null);
 
+  // Load + subscribe whenever the user changes
   useEffect(() => {
-    (async () => {
-      const list = await loadOrders();
-      setOrders(list);
+    if (!user) {
+      setOrders([]);
       setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      const list = await fetchOrdersForCustomer(user.id);
+      if (!cancelled) {
+        setOrders(list);
+        setLoading(false);
+      }
     })();
-  }, []);
 
-  // Persist on change
-  useEffect(() => {
-    if (!loading) saveOrders(orders);
-  }, [orders, loading]);
+    const supabase = getSupabaseClient();
+    const channel = supabase
+      .channel(`orders-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `customer_id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              setOrders((prev) => prev.filter((p) => p.id !== oldId));
+            }
+            return;
+          }
+          const next = mapOrderRow(payload.new);
+          setOrders((prev) => {
+            const idx = prev.findIndex((p) => p.id === next.id);
+            if (idx < 0) return [next, ...prev];
+            const copy = [...prev];
+            // Preserve locally-advancing rider position when DB has none
+            copy[idx] = {
+              ...copy[idx],
+              ...next,
+              riderPosition: next.riderPosition || copy[idx].riderPosition,
+            };
+            return copy;
+          });
+        }
+      )
+      .subscribe();
+    channelRef.current = channel;
 
-  // Mock status progression + rider movement every 6s
+    return () => {
+      cancelled = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [user]);
+
+  // Demo: mock rider movement & status progression locally; push status
+  // changes to Supabase so realtime fires across clients.
   useEffect(() => {
     if (tickRef.current) clearInterval(tickRef.current);
     tickRef.current = setInterval(() => {
-      setOrders((prev) =>
-        prev.map((o) => {
-          if (o.status === 'delivered' || o.status === 'cancelled' || o.status === 'pending_payment') {
+      setOrders((prev) => {
+        const pendingPushes: Promise<any>[] = [];
+        const next = prev.map((o) => {
+          if (
+            o.status === 'delivered' ||
+            o.status === 'cancelled' ||
+            o.status === 'pending_payment' ||
+            o.status === 'verifying'
+          ) {
             return o;
           }
-          let next: Order = { ...o };
-          // Move rider toward target
+          let updated: Order = { ...o };
           if (o.riderPosition) {
-            const target = o.status === 'on_the_way' ? o.customerPosition : o.restaurantPosition;
-            next.riderPosition = stepRider(o.riderPosition, target, 0.18);
+            const target =
+              o.status === 'on_the_way' ? o.customerPosition : o.restaurantPosition;
+            updated.riderPosition = stepRider(o.riderPosition, target, 0.18);
           }
-          // Advance status occasionally
           if (Math.random() < 0.35) {
-            next.status = progressOrderStatus(o.status);
-            if (next.status === 'on_the_way' && o.riderPosition) {
-              next.riderPosition = o.restaurantPosition;
+            const newStatus = progressOrderStatus(o.status);
+            updated.status = newStatus;
+            if (newStatus === 'on_the_way' && o.riderPosition) {
+              updated.riderPosition = o.restaurantPosition;
             }
-            if (next.status === 'delivered') {
-              next.riderPosition = o.customerPosition;
+            if (newStatus === 'delivered') {
+              updated.riderPosition = o.customerPosition;
             }
+            pendingPushes.push(
+              updateOrderInDb(o.id, {
+                status: newStatus,
+                rider_location: updated.riderPosition,
+              })
+            );
           }
-          // Estimated countdown
-          if (o.estimatedMinutes > 1 && next.status !== 'delivered') {
-            next.estimatedMinutes = Math.max(1, o.estimatedMinutes - 1);
+          if (o.estimatedMinutes > 1 && updated.status !== 'delivered') {
+            updated.estimatedMinutes = Math.max(1, o.estimatedMinutes - 1);
           }
-          return next;
-        })
-      );
+          return updated;
+        });
+        // Fire and forget — realtime will reconcile other clients.
+        if (pendingPushes.length > 0) Promise.all(pendingPushes).catch(() => {});
+        return next;
+      });
     }, 6000);
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
@@ -70,23 +162,38 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addOrder = useCallback(async (order: Order) => {
-    setOrders((prev) => [order, ...prev]);
+    // Optimistically merge into local state; realtime will reconcile.
+    setOrders((prev) =>
+      prev.find((p) => p.id === order.id) ? prev : [order, ...prev]
+    );
   }, []);
 
   const updateOrder = useCallback(async (id: string, patch: Partial<Order>) => {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+    const row = orderPatchToRow(patch);
+    if (Object.keys(row).length > 0) {
+      await updateOrderInDb(id, row);
+    }
   }, []);
 
-  const setStatus = useCallback(async (id: string, status: OrderStatus) => {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
-  }, []);
+  const setStatus = useCallback(
+    async (id: string, status: OrderStatus) => {
+      await updateOrder(id, { status });
+    },
+    [updateOrder]
+  );
 
-  const getById = useCallback((id: string) => orders.find((o) => o.id === id), [orders]);
+  const getById = useCallback(
+    (id: string) => orders.find((o) => o.id === id),
+    [orders]
+  );
 
   const value = useMemo(
     () => ({ orders, loading, addOrder, updateOrder, setStatus, getById }),
     [orders, loading, addOrder, updateOrder, setStatus, getById]
   );
 
-  return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;
+  return (
+    <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>
+  );
 }
