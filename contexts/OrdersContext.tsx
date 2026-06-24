@@ -12,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import {
   fetchOrdersForCustomer,
   mapOrderRow,

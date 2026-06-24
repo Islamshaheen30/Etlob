@@ -2,7 +2,7 @@
 // Orders live in the `orders` table; this module owns the row <-> Order
 // mapping and exposes thin CRUD helpers for the OrdersContext to use.
 
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { PaymentMethodId, SADAT_CENTER } from '@/constants/config';
 import { VehicleType } from '@/constants/adminSettings';
 import { MenuItem, Restaurant } from '@/constants/mockData';

@@ -11,7 +11,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { getSupabaseClient } from '@/template';
+import { getSupabaseClient } from '@/template/core';
 import { MenuItem, Restaurant } from '@/constants/mockData';
 import { SADAT_CENTER } from '@/constants/config';
 

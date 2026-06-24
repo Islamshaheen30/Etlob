@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AddressPicker, Button, Header, Input, Screen } from '@/components';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { useLocale } from '@/hooks/useLocale';
 import { APP } from '@/constants/config';
 import { OsmAddressResult } from '@/services/openstreetmap';

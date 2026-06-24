@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { AddressPicker, Button, Card, Header, Pill, Screen } from '@/components';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocale } from '@/hooks/useLocale';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { APP } from '@/constants/config';
 import { REFERRAL_SETTINGS } from '@/constants/adminSettings';
 import { OsmAddressResult } from '@/services/openstreetmap';

@@ -13,7 +13,7 @@ import {
 import { useCart } from '@/hooks/useCart';
 import { useLocale } from '@/hooks/useLocale';
 import { useAuth } from '@/hooks/useAuth';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { useRestaurantsData } from '@/contexts/RestaurantsContext';
 import { suggestAddOnsFromMenu } from '@/services/restaurants';
 import { distanceKm, getTotalDeliveryMinutes } from '@/services/tracking';

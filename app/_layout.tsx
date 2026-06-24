@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AlertProvider } from '@/template';
+import { AlertProvider } from '@/template/ui';
 import { LocaleProvider } from '@/contexts/LocaleContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RestaurantsProvider } from '@/contexts/RestaurantsContext';

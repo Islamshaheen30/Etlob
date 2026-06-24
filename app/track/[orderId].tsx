@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Button, Card, Header, OrderTimeline, Pill, RiderMap, Screen } from '@/components';
 import { useOrders } from '@/hooks/useOrders';
 import { useLocale } from '@/hooks/useLocale';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { distanceKm } from '@/services/tracking';
 import { STATUS_LABELS } from '@/services/orders';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';

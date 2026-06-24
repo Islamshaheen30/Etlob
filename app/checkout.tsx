@@ -17,7 +17,7 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrders } from '@/hooks/useOrders';
 import { useLocale } from '@/hooks/useLocale';
-import { useAlert } from '@/template';
+import { useAlert } from '@/template/ui';
 import { PAYMENT_METHODS, PaymentMethodId, SADAT_CENTER } from '@/constants/config';
 import { getVehicleRate } from '@/constants/adminSettings';
 import { buildOrderRow, createOrderInDb } from '@/services/orders';
