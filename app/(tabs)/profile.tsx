@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AddressPicker, Button, Card, Header, Pill, Screen } from '@/components';
@@ -13,7 +13,7 @@ import { colors, radius, shadows, spacing, typography } from '@/constants/theme'
 
 export default function ProfileTab() {
   const router = useRouter();
-  const { user, loading, logout, applyReferral, setSimulateOutsideZone, setAddress } = useAuth();
+  const { user, loading, logout, setAddress } = useAuth();
   const { t } = useLocale();
   const { showAlert } = useAlert();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -37,11 +37,6 @@ export default function ProfileTab() {
         },
       },
     ]);
-  };
-
-  const simulateReferral = async () => {
-    await applyReferral();
-    showAlert('انضم صديق!', 'شكراً لنشر الكلمة — استمر!');
   };
 
   const handleSelectAddress = async (r: OsmAddressResult) => {
@@ -136,8 +131,6 @@ export default function ProfileTab() {
               <Button
                 label={t('shareCode')}
                 variant="outline"
-                fullWidth={false}
-                style={{ flex: 1 }}
                 iconLeft={<MaterialIcons name="ios-share" size={16} color={colors.text} />}
                 onPress={() =>
                   showAlert(
@@ -146,35 +139,9 @@ export default function ProfileTab() {
                   )
                 }
               />
-              <View style={{ width: spacing.sm }} />
-              <Button
-                label={t('simulateInvite')}
-                fullWidth={false}
-                style={{ flex: 1 }}
-                onPress={simulateReferral}
-              />
             </View>
           </Card>
         ) : null}
-
-        {/* Geofence simulator */}
-        <Card>
-          <View style={styles.simRow}>
-            <View style={styles.simIcon}>
-              <MaterialIcons name="travel-explore" size={18} color={colors.text} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.section}>{t('simulateOutside')}</Text>
-              <Text style={styles.subtle}>{t('simulateOutsideHint')}</Text>
-            </View>
-            <Switch
-              value={user.simulateOutsideZone ?? false}
-              onValueChange={(v) => setSimulateOutsideZone(v)}
-              trackColor={{ true: colors.primaryDark, false: colors.surfaceMuted }}
-              thumbColor={'#fff'}
-            />
-          </View>
-        </Card>
 
         {/* Settings */}
         <Card padded={false}>
