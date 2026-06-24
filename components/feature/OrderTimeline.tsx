@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography } from '@/constants/theme';
+import { colors, spacing, typography } from '@/constants/theme';
 import { OrderStatus, STATUS_LABELS } from '@/services/orders';
 
 interface Props {
@@ -9,11 +9,11 @@ interface Props {
 }
 
 const STAGES: { key: OrderStatus; icon: any; sub: string }[] = [
-  { key: 'confirmed', icon: 'check-circle', sub: 'Order received' },
-  { key: 'preparing', icon: 'restaurant', sub: 'Cooking your food' },
-  { key: 'rider_pickup', icon: 'pedal-bike', sub: 'Rider at restaurant' },
-  { key: 'on_the_way', icon: 'directions-bike', sub: 'Heading to you' },
-  { key: 'delivered', icon: 'home', sub: 'Enjoy your meal' },
+  { key: 'confirmed', icon: 'check-circle', sub: 'تم استلام الطلب' },
+  { key: 'preparing', icon: 'restaurant', sub: 'جاري إعداد طعامك' },
+  { key: 'rider_pickup', icon: 'pedal-bike', sub: 'السائق في المطعم' },
+  { key: 'on_the_way', icon: 'directions-bike', sub: 'في طريقه إليك' },
+  { key: 'delivered', icon: 'home', sub: 'بالهنا والشفا' },
 ];
 
 export function OrderTimeline({ current }: Props) {
@@ -79,6 +79,6 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   connector: { width: 2, flex: 1, backgroundColor: colors.border, marginTop: 2 },
-  title: { ...typography.bodyStrong, color: colors.text },
-  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  title: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
 });

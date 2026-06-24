@@ -1,23 +1,21 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Screen, Button } from '@/components';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocale } from '@/hooks/useLocale';
 import { APP } from '@/constants/config';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';
 
 export default function Welcome() {
   const router = useRouter();
   const { user, loading } = useAuth();
-
-  useEffect(() => {
-    // Auto-redirect to home if already logged in
-  }, []);
+  const { t } = useLocale();
 
   if (loading) return null;
-  if (user) return <Redirect href={user.isDriver ? '/driver' : '/(tabs)'} />;
+  if (user) return <Redirect href="/(tabs)" />;
 
   return (
     <Screen edges={['top', 'bottom']} background={colors.background}>
@@ -27,8 +25,8 @@ export default function Welcome() {
             <MaterialIcons name="pedal-bike" size={20} color={colors.text} />
           </View>
           <View>
-            <Text style={styles.brand}>{APP.name}</Text>
-            <Text style={styles.brandAr}>{APP.nameAr}</Text>
+            <Text style={styles.brand}>{APP.nameAr}</Text>
+            <Text style={styles.brandAr}>{APP.name}</Text>
           </View>
         </View>
 
@@ -41,33 +39,25 @@ export default function Welcome() {
           />
           <View style={styles.heroBadge}>
             <MaterialIcons name="location-on" size={14} color={colors.text} />
-            <Text style={styles.heroBadgeText}>{APP.city}</Text>
+            <Text style={styles.heroBadgeText}>{APP.cityAr}</Text>
           </View>
         </View>
 
-        <Text style={styles.title}>Tasty food at your door,{'\n'}delivered by bicycle.</Text>
-        <Text style={styles.subtitle}>
-          Order from the best of {APP.city}. Track your rider live and pay your way.
-        </Text>
+        <Text style={styles.title}>{t('welcomeTitle')}</Text>
+        <Text style={styles.subtitle}>{t('welcomeSub')}</Text>
 
         <View style={styles.featureRow}>
-          <Feature icon="storefront" label="Local restaurants" />
-          <Feature icon="my-location" label="Live tracking" />
-          <Feature icon="card-giftcard" label="Free deliveries" />
+          <Feature icon="storefront" label={t('localRestaurants')} />
+          <Feature icon="my-location" label={t('liveTracking')} />
+          <Feature icon="card-giftcard" label={t('freeDeliveries')} />
         </View>
 
         <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
-          <Button label="Get started" onPress={() => router.push('/login')} />
-          <Button
-            label="I already have an account"
-            variant="ghost"
-            onPress={() => router.push('/login')}
-          />
+          <Button label={t('getStarted')} onPress={() => router.push('/login')} />
+          <Button label={t('haveAccount')} variant="ghost" onPress={() => router.push('/login')} />
         </View>
 
-        <Text style={styles.legal}>
-          By continuing you agree to our terms. Service available in {APP.city} only.
-        </Text>
+        <Text style={styles.legal}>{t('legalNote')}</Text>
       </ScrollView>
     </Screen>
   );
@@ -118,8 +108,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   heroBadgeText: { ...typography.caption, color: colors.text, fontWeight: '700', marginLeft: 2 },
-  title: { ...typography.display, color: colors.text, marginTop: spacing.xl },
-  subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
+  title: { ...typography.display, color: colors.text, marginTop: spacing.xl, textAlign: 'right' },
+  subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm, textAlign: 'right' },
   featureRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xl },
   feature: { flex: 1, alignItems: 'center' },
   featureIcon: {

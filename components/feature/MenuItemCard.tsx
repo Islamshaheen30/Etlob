@@ -23,27 +23,26 @@ export function MenuItemCard({
   onDecrement,
   disabled,
 }: Props) {
-  const { locale } = useLocale();
-  const ar = locale === 'ar';
+  const { t } = useLocale();
   return (
     <View style={[styles.row, disabled && { opacity: 0.55 }]}>
       <View style={{ flex: 1, paddingRight: spacing.md }}>
         <View style={styles.titleLine}>
           <Text style={styles.name} numberOfLines={1}>
-            {ar ? item.nameAr : item.name}
+            {item.nameAr}
           </Text>
           {item.popular ? (
             <View style={styles.popular}>
               <MaterialIcons name="local-fire-department" size={12} color="#A06400" />
-              <Text style={styles.popularText}>{ar ? 'الأكثر طلباً' : 'Popular'}</Text>
+              <Text style={styles.popularText}>{t('popular')}</Text>
             </View>
           ) : null}
         </View>
-        <Text style={styles.nameAr}>{ar ? item.name : item.nameAr}</Text>
+        <Text style={styles.nameAr}>{item.name}</Text>
         <Text style={styles.desc} numberOfLines={2}>
           {item.description}
         </Text>
-        <Text style={styles.price}>EGP {item.price}</Text>
+        <Text style={styles.price}>{item.price} ج.م</Text>
       </View>
       <View style={{ alignItems: 'center' }}>
         <View style={styles.imgWrap}>
@@ -89,9 +88,7 @@ export function MenuItemCard({
               size={18}
               color={colors.text}
             />
-            {!disabled ? (
-              <Text style={styles.addLabel}>{ar ? 'أضف' : 'Add'}</Text>
-            ) : null}
+            {!disabled ? <Text style={styles.addLabel}>{t('add')}</Text> : null}
           </Pressable>
         )}
       </View>
@@ -108,10 +105,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { ...typography.bodyStrong, color: colors.text },
-  nameAr: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  desc: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
-  price: { ...typography.bodyStrong, color: colors.text, marginTop: 8 },
+  name: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  nameAr: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
+  desc: { ...typography.caption, color: colors.textMuted, marginTop: 4, textAlign: 'right' },
+  price: { ...typography.bodyStrong, color: colors.text, marginTop: 8, textAlign: 'right' },
   popular: {
     flexDirection: 'row',
     alignItems: 'center',

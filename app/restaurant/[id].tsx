@@ -30,16 +30,15 @@ export default function RestaurantDetail() {
   const router = useRouter();
   const { showAlert } = useAlert();
   const { user } = useAuth();
-  const { locale, t } = useLocale();
-  const ar = locale === 'ar';
+  const { t } = useLocale();
   const {
-    add,
     lines,
     restaurant: cartRestaurant,
     itemCount,
     subtotal,
     setQty,
     clear,
+    add,
   } = useCart();
 
   const restaurant = useMemo(() => getRestaurantById(id || ''), [id]);
@@ -75,8 +74,8 @@ export default function RestaurantDetail() {
     return (
       <Screen>
         <View style={{ padding: spacing.xl }}>
-          <Text style={{ ...typography.body, color: colors.textMuted }}>
-            {ar ? 'المطعم غير موجود.' : 'Restaurant not found.'}
+          <Text style={{ ...typography.body, color: colors.textMuted, textAlign: 'right' }}>
+            المطعم غير موجود.
           </Text>
         </View>
       </Screen>
@@ -97,9 +96,8 @@ export default function RestaurantDetail() {
     const item = menu.find((m) => m.id === mid);
     if (!item) return;
 
-    // Different restaurant warning (admin-managed bilingual copy)
     if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
-      const w = SINGLE_RESTAURANT_WARNING[locale];
+      const w = SINGLE_RESTAURANT_WARNING;
       showAlert(w.title, w.body, [
         { text: w.cancel, style: 'cancel' },
         {
@@ -107,7 +105,6 @@ export default function RestaurantDetail() {
           style: 'destructive',
           onPress: () => {
             clear();
-            // Open add-ons sheet for the new item after clearing
             openSheetFor(item);
           },
         },
@@ -115,7 +112,6 @@ export default function RestaurantDetail() {
       return;
     }
 
-    // Same restaurant — open the add-ons suggestion sheet
     openSheetFor(item);
   };
 
@@ -158,7 +154,7 @@ export default function RestaurantDetail() {
               />
               <View style={styles.coverOverlay} />
               <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
-                <MaterialIcons name="chevron-left" size={26} color={colors.text} />
+                <MaterialIcons name="chevron-right" size={26} color={colors.text} />
               </Pressable>
               {isBusy ? (
                 <View style={styles.coverBusy}>
@@ -167,12 +163,8 @@ export default function RestaurantDetail() {
                 </View>
               ) : null}
               <View style={styles.coverInfo}>
-                <Text style={styles.coverTitle}>
-                  {ar ? restaurant.nameAr : restaurant.name}
-                </Text>
-                <Text style={styles.coverAr}>
-                  {ar ? restaurant.name : restaurant.nameAr}
-                </Text>
+                <Text style={styles.coverTitle}>{restaurant.nameAr}</Text>
+                <Text style={styles.coverAr}>{restaurant.name}</Text>
                 <View style={styles.coverPills}>
                   <Pill label={restaurant.cuisine} tone="primary" />
                   <Pill label={`${restaurant.rating.toFixed(1)} ★`} tone="warning" />
@@ -187,13 +179,9 @@ export default function RestaurantDetail() {
               <Text style={styles.desc}>{restaurant.description}</Text>
 
               <View style={styles.infoRow}>
-                <Info icon="pedal-bike" text={`EGP ${restaurant.deliveryFee}`} />
-                {time ? (
-                  <Info icon="restaurant" text={`${time.prep} ${t('prepLabel')}`} />
-                ) : null}
-                {time ? (
-                  <Info icon="directions-bike" text={`${time.ride} ${t('rideLabel')}`} />
-                ) : null}
+                <Info icon="pedal-bike" text={`${restaurant.deliveryFee} ج.م`} />
+                {time ? <Info icon="restaurant" text={`${time.prep} ${t('prepLabel')}`} /> : null}
+                {time ? <Info icon="directions-bike" text={`${time.ride} ${t('rideLabel')}`} /> : null}
                 <Info icon="star" text={`${restaurant.reviews}+`} />
               </View>
 
@@ -203,21 +191,16 @@ export default function RestaurantDetail() {
                     <MaterialIcons name="schedule" size={18} color={colors.text} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.totalTimeLabel}>
-                      {ar ? 'إجمالي وقت التوصيل' : 'Total delivery time'}
-                    </Text>
-                    <Text style={styles.totalTimeValue}>
-                      {time.total} {ar ? 'دقيقة' : 'min'}
-                    </Text>
+                    <Text style={styles.totalTimeLabel}>إجمالي وقت التوصيل</Text>
+                    <Text style={styles.totalTimeValue}>{time.total} دقيقة</Text>
                   </View>
                   <Text style={styles.totalTimeSub}>
                     {time.prep} {t('prepLabel')} + {time.ride} {t('rideLabel')}
-                    {time.distKm > 0 ? `\n${time.distKm.toFixed(1)} km` : ''}
+                    {time.distKm > 0 ? `\n${time.distKm.toFixed(1)} كم` : ''}
                   </Text>
                 </View>
               ) : null}
 
-              {/* Busy banner */}
               {isBusy ? (
                 <View style={styles.busyBanner}>
                   <View style={styles.busyBannerIcon}>
@@ -230,7 +213,6 @@ export default function RestaurantDetail() {
                 </View>
               ) : null}
 
-              {/* Offer card */}
               {offer ? (
                 <View style={styles.offerCard}>
                   <View style={styles.offerBadge}>
@@ -239,12 +221,8 @@ export default function RestaurantDetail() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.offerLabel}>{t('yourOffer')}</Text>
-                    <Text style={styles.offerTitle}>
-                      {ar ? offer.titleAr : offer.titleEn}
-                    </Text>
-                    <Text style={styles.offerDesc}>
-                      {ar ? offer.descAr : offer.descEn}
-                    </Text>
+                    <Text style={styles.offerTitle}>{offer.titleAr}</Text>
+                    <Text style={styles.offerDesc}>{offer.descAr}</Text>
                     {offer.code ? (
                       <View style={styles.offerCodePill}>
                         <MaterialIcons name="confirmation-number" size={12} color={colors.text} />
@@ -255,7 +233,7 @@ export default function RestaurantDetail() {
                 </View>
               ) : null}
 
-              <Text style={styles.section}>{ar ? 'القائمة' : 'Menu'}</Text>
+              <Text style={styles.section}>{t('menu')}</Text>
             </View>
 
             <CategoryBar options={categories} value={category} onChange={setCategory} />
@@ -283,8 +261,8 @@ export default function RestaurantDetail() {
           <View style={styles.cartCount}>
             <Text style={styles.cartCountText}>{itemCount}</Text>
           </View>
-          <Text style={styles.cartLabel}>{ar ? 'عرض السلة' : 'View cart'}</Text>
-          <Text style={styles.cartTotal}>EGP {subtotal.toFixed(0)}</Text>
+          <Text style={styles.cartLabel}>{t('viewCart')}</Text>
+          <Text style={styles.cartTotal}>{subtotal.toFixed(0)} ج.م</Text>
         </Pressable>
       ) : null}
 
@@ -311,153 +289,99 @@ function Info({ icon, text }: { icon: any; text: string }) {
 const styles = StyleSheet.create({
   coverWrap: { height: 240, backgroundColor: colors.surfaceMuted },
   cover: { width: '100%', height: '100%' },
-  coverOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
+  coverOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
   backBtn: {
-    position: 'absolute',
-    top: 44,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    position: 'absolute', top: 44, right: 16,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   coverBusy: {
-    position: 'absolute',
-    top: 44,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    position: 'absolute', top: 44, left: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#1A1A1A',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    ...shadows.pop,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: radius.pill, ...shadows.pop,
   },
   coverBusyText: { ...typography.caption, color: '#fff', fontWeight: '800' },
   coverInfo: { position: 'absolute', bottom: 16, left: 16, right: 16 },
-  coverTitle: { ...typography.display, color: '#fff' },
-  coverAr: { ...typography.body, color: '#FFF7DA' },
+  coverTitle: { ...typography.display, color: '#fff', textAlign: 'right' },
+  coverAr: { ...typography.body, color: '#FFF7DA', textAlign: 'right' },
   coverPills: { flexDirection: 'row', gap: 6, marginTop: spacing.sm, flexWrap: 'wrap' },
   body: { padding: spacing.lg, gap: spacing.md },
-  desc: { ...typography.body, color: colors.textMuted },
+  desc: { ...typography.body, color: colors.textMuted, textAlign: 'right' },
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   info: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.md, paddingVertical: 6,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1, borderColor: colors.border,
   },
   infoText: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
   totalTimeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: colors.primarySoft,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    padding: spacing.md, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.primary,
   },
   totalTimeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  totalTimeLabel: { ...typography.micro, color: colors.textMuted, fontWeight: '800', letterSpacing: 0.5 },
-  totalTimeValue: { ...typography.title, color: colors.text, marginTop: 2 },
-  totalTimeSub: { ...typography.micro, color: colors.textMuted, fontWeight: '700', textAlign: 'right' },
+  totalTimeLabel: { ...typography.micro, color: colors.textMuted, fontWeight: '800', letterSpacing: 0.5, textAlign: 'right' },
+  totalTimeValue: { ...typography.title, color: colors.text, marginTop: 2, textAlign: 'right' },
+  totalTimeSub: { ...typography.micro, color: colors.textMuted, fontWeight: '700', textAlign: 'left' },
   busyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: '#FBE2E1',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: '#F3B5B3',
+    padding: spacing.md, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: '#F3B5B3',
   },
   busyBannerIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  busyTitle: { ...typography.bodyStrong, color: '#8B1F1B' },
-  busyBody: { ...typography.caption, color: '#6B2C2A', marginTop: 2 },
+  busyTitle: { ...typography.bodyStrong, color: '#8B1F1B', textAlign: 'right' },
+  busyBody: { ...typography.caption, color: '#6B2C2A', marginTop: 2, textAlign: 'right' },
   offerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: '#1A1A1A',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    ...shadows.pop,
+    padding: spacing.md, borderRadius: radius.lg, ...shadows.pop,
   },
   offerBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
+    width: 64, height: 64, borderRadius: radius.md,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   offerBadgeNum: { ...typography.title, color: colors.text, lineHeight: 24 },
   offerBadgeLabel: { fontSize: 10, fontWeight: '800', color: '#5B4A00', letterSpacing: 0.5 },
-  offerLabel: { ...typography.micro, color: colors.primary, fontWeight: '800', letterSpacing: 0.5 },
-  offerTitle: { ...typography.bodyStrong, color: '#fff', marginTop: 2 },
-  offerDesc: { ...typography.caption, color: '#B8B8B8', marginTop: 2 },
+  offerLabel: { ...typography.micro, color: colors.primary, fontWeight: '800', letterSpacing: 0.5, textAlign: 'right' },
+  offerTitle: { ...typography.bodyStrong, color: '#fff', marginTop: 2, textAlign: 'right' },
+  offerDesc: { ...typography.caption, color: '#B8B8B8', marginTop: 2, textAlign: 'right' },
   offerCodePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
     backgroundColor: colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-    marginTop: 6,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: radius.pill, marginTop: 6,
   },
   offerCode: { ...typography.micro, color: colors.text, fontWeight: '800', letterSpacing: 1 },
-  section: { ...typography.section, color: colors.text },
+  section: { ...typography.section, color: colors.text, textAlign: 'right' },
   cartBar: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
-    right: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'absolute', bottom: spacing.lg, left: spacing.lg, right: spacing.lg,
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#1A1A1A',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
-    borderRadius: radius.lg,
-    gap: spacing.md,
-    ...shadows.pop,
+    paddingHorizontal: spacing.lg, paddingVertical: 14,
+    borderRadius: radius.lg, gap: spacing.md, ...shadows.pop,
   },
   cartCount: {
     backgroundColor: colors.primary,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
   },
   cartCountText: { ...typography.caption, fontWeight: '800', color: colors.text },
-  cartLabel: { ...typography.button, color: '#fff', flex: 1 },
+  cartLabel: { ...typography.button, color: '#fff', flex: 1, textAlign: 'right' },
   cartTotal: { ...typography.button, color: colors.primary },
 });

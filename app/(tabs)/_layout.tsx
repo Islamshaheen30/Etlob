@@ -5,10 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { colors, shadows } from '@/constants/theme';
 import { useCart } from '@/hooks/useCart';
+import { useLocale } from '@/hooks/useLocale';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { itemCount } = useCart();
+  const { t } = useLocale();
 
   const tabBarStyle = {
     height: Platform.select({ ios: insets.bottom + 64, android: insets.bottom + 64, default: 72 }),
@@ -34,7 +36,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('home'),
           tabBarIcon: ({ color, size, focused }) => (
             <MaterialIcons name={focused ? 'restaurant' : 'restaurant-menu'} size={size} color={color} />
           ),
@@ -43,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Orders',
+          title: t('orders'),
           tabBarIcon: ({ color, size }) => (
             <View>
               <MaterialIcons name="receipt-long" size={size} color={color} />
@@ -59,7 +61,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('profile'),
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="person" size={size} color={color} />
           ),

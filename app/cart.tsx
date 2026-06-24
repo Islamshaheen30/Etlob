@@ -28,8 +28,7 @@ export default function CartPage() {
     setVehicleType,
   } = useCart();
   const { user } = useAuth();
-  const { locale, t } = useLocale();
-  const ar = locale === 'ar';
+  const { t } = useLocale();
 
   const userLoc = getEffectiveLocation(user);
   const dist = restaurant ? distanceKm(userLoc, restaurant.location) : 0;
@@ -38,16 +37,16 @@ export default function CartPage() {
   const rideMin = estimateVehicleRideMinutes(rate, dist);
   const totalMin = (restaurant?.prepTimeMin ?? 0) + rideMin;
   const total = subtotal + deliveryFee;
-  const vehicleName = ar ? rate.nameAr : rate.nameEn;
+  const vehicleName = rate.nameAr;
 
   return (
     <Screen edges={['top', 'bottom']}>
       <Header
-        title="Your cart"
+        title={t('yourCart')}
         right={
           lines.length > 0 ? (
             <Pressable onPress={clear} hitSlop={8}>
-              <Text style={styles.clear}>Clear</Text>
+              <Text style={styles.clear}>{t('clear')}</Text>
             </Pressable>
           ) : null
         }
@@ -56,9 +55,9 @@ export default function CartPage() {
       {lines.length === 0 ? (
         <View style={styles.empty}>
           <Image source={require('@/assets/images/empty-cart.png')} style={styles.emptyImg} contentFit="contain" />
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySub}>Add items from a restaurant to continue.</Text>
-          <Button label="Browse restaurants" onPress={() => router.replace('/(tabs)')} />
+          <Text style={styles.emptyTitle}>{t('emptyCart')}</Text>
+          <Text style={styles.emptySub}>{t('emptyCartDesc')}</Text>
+          <Button label={t('browseRestaurants')} onPress={() => router.replace('/(tabs)')} />
         </View>
       ) : (
         <>
@@ -68,9 +67,9 @@ export default function CartPage() {
                 <View style={styles.row}>
                   <Image source={{ uri: restaurant.image }} style={styles.thumb} contentFit="cover" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.title}>{restaurant.name}</Text>
+                    <Text style={styles.title}>{restaurant.nameAr}</Text>
                     <Text style={styles.sub}>
-                      {restaurant.cuisine} · {restaurant.etaMin} min ETA
+                      {restaurant.cuisine} · {restaurant.etaMin} {t('minShort')}
                     </Text>
                   </View>
                 </View>
@@ -82,8 +81,8 @@ export default function CartPage() {
                 <View key={l.item.id} style={styles.line}>
                   <Image source={{ uri: l.item.image }} style={styles.lineImg} contentFit="cover" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.lineName}>{l.item.name}</Text>
-                    <Text style={styles.linePrice}>EGP {l.item.price} each</Text>
+                    <Text style={styles.lineName}>{l.item.nameAr}</Text>
+                    <Text style={styles.linePrice}>{l.item.price} ج.م</Text>
                   </View>
                   <View style={styles.stepper}>
                     <Pressable onPress={() => setQty(l.item.id, l.qty - 1)} style={styles.stepBtn} hitSlop={6}>
@@ -110,49 +109,43 @@ export default function CartPage() {
                 </View>
               </View>
               <View style={{ height: spacing.md }} />
-              <VehicleSelector
-                distKm={dist}
-                value={vehicleType}
-                onChange={setVehicleType}
-              />
+              <VehicleSelector distKm={dist} value={vehicleType} onChange={setVehicleType} />
               <View style={styles.totalTimeRow}>
                 <MaterialIcons name="schedule" size={14} color={colors.primaryDark} />
                 <Text style={styles.totalTimeText}>
-                  {ar
-                    ? `${totalMin} دقيقة إجمالاً (${restaurant?.prepTimeMin ?? 0} ${t('prepLabel')} + ${rideMin} ${t('rideLabel')})`
-                    : `${totalMin} ${t('totalTime')} (${restaurant?.prepTimeMin ?? 0} ${t('prepLabel')} + ${rideMin} ${t('rideLabel')})`}
+                  {totalMin} دقيقة إجمالاً ({restaurant?.prepTimeMin ?? 0} {t('prepLabel')} + {rideMin} {t('rideLabel')})
                 </Text>
               </View>
             </Card>
 
             <Card>
               <Text style={styles.section}>{t('receipt')}</Text>
-              <Row label={t('subtotal')} value={`EGP ${subtotal.toFixed(0)}`} />
+              <Row label={t('subtotal')} value={`${subtotal.toFixed(0)} ج.م`} />
               <View style={styles.feeRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.recLabel}>{t('deliveryFeeLabel')}</Text>
                   <Text style={styles.feeMeta}>
                     {t('deliveryVia')} {vehicleName} · {rideMin} {t('minShort')}
-                    {dist > 0 ? ` · ${dist.toFixed(1)} km` : ''}
+                    {dist > 0 ? ` · ${dist.toFixed(1)} كم` : ''}
                   </Text>
                 </View>
-                <Text style={styles.recValue}>EGP {deliveryFee.toFixed(0)}</Text>
+                <Text style={styles.recValue}>{deliveryFee.toFixed(0)} ج.م</Text>
               </View>
               {user && user.freeDeliveries > 0 ? (
-                <Row label="Free delivery vouchers" value={`${user.freeDeliveries} available`} muted />
+                <Row label={t('freeDeliveriesAvail')} value={`${user.freeDeliveries}`} muted />
               ) : null}
               <View style={styles.divider} />
-              <Row label={t('total')} value={`EGP ${total.toFixed(0)}`} bold />
+              <Row label={t('total')} value={`${total.toFixed(0)} ج.م`} bold />
             </Card>
           </ScrollView>
 
           <View style={styles.footer}>
             <View>
-              <Text style={styles.footerLabel}>Total</Text>
-              <Text style={styles.footerValue}>EGP {total.toFixed(0)}</Text>
+              <Text style={styles.footerLabel}>{t('total')}</Text>
+              <Text style={styles.footerValue}>{total.toFixed(0)} ج.م</Text>
             </View>
             <Button
-              label="Checkout"
+              label={t('checkout')}
               fullWidth={false}
               style={{ flex: 1, marginLeft: spacing.lg }}
               onPress={() => router.push('/checkout')}
@@ -181,8 +174,8 @@ const styles = StyleSheet.create({
   emptySub: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   thumb: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
-  title: { ...typography.bodyStrong, color: colors.text },
-  sub: { ...typography.caption, color: colors.textMuted },
+  title: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  sub: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
   line: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -192,8 +185,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.divider,
   },
   lineImg: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: colors.surfaceMuted },
-  lineName: { ...typography.bodyStrong, color: colors.text },
-  linePrice: { ...typography.caption, color: colors.textMuted },
+  lineName: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  linePrice: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -202,57 +195,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 2,
   },
-  stepBtn: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-  },
+  stepBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   qty: { ...typography.bodyStrong, color: colors.text, minWidth: 22, textAlign: 'center' },
-  section: { ...typography.section, color: colors.text, marginBottom: spacing.sm },
+  section: { ...typography.section, color: colors.text, marginBottom: spacing.sm, textAlign: 'right' },
   vehHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   vehIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  vehSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  vehSub: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
   totalTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.md,
-    marginTop: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.primarySoft, paddingHorizontal: spacing.md,
+    paddingVertical: 8, borderRadius: radius.md, marginTop: spacing.md,
   },
   totalTimeText: { ...typography.micro, color: colors.text, fontWeight: '700', flex: 1 },
-  feeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  feeMeta: { ...typography.micro, color: colors.textMuted, marginTop: 2, fontWeight: '600' },
+  feeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  feeMeta: { ...typography.micro, color: colors.textMuted, marginTop: 2, fontWeight: '600', textAlign: 'right' },
   recRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   recLabel: { ...typography.body, color: colors.textMuted },
   recValue: { ...typography.bodyStrong, color: colors.text },
   divider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.sm },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, padding: spacing.lg,
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
   footerLabel: { ...typography.caption, color: colors.textMuted },
   footerValue: { ...typography.title, color: colors.text },

@@ -1,15 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateReferralCode } from '@/constants/adminSettings';
+import { LatLng } from './tracking';
 
 export interface UserProfile {
   id: string;
   name: string;
   phone: string;
   email?: string;
+  // Display label for the user's area (e.g. "District 5" or an OSM result)
   area: string;
+  // Full street address (filled via the OpenStreetMap picker)
+  address?: string;
+  // Coordinates resolved from OSM — preferred over `area` for geofence
+  // and distance calculations.
+  addressLocation?: LatLng;
   referralCode: string;
   referredCount: number;
   freeDeliveries: number;
-  isDriver?: boolean;
   // When true, treats the user as if they were physically outside the
   // delivery zones — useful for QA/testing the geofence flow.
   simulateOutsideZone?: boolean;
@@ -18,16 +25,14 @@ export interface UserProfile {
 
 const KEY = 'etlob.user.v1';
 
-function genCode(name: string) {
-  const stem = (name || 'ETLOB').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase() || 'USER';
-  const num = Math.floor(100 + Math.random() * 900);
-  return `${stem}${num}`;
-}
-
 export async function loadUser(): Promise<UserProfile | null> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as UserProfile) : null;
+    if (!raw) return null;
+    const u = JSON.parse(raw) as UserProfile & { isDriver?: boolean };
+    // Strip any deprecated driver flag from legacy storage.
+    const { isDriver: _legacy, ...clean } = u as any;
+    return clean as UserProfile;
   } catch {
     return null;
   }
@@ -41,17 +46,25 @@ export async function clearUser(): Promise<void> {
   await AsyncStorage.removeItem(KEY);
 }
 
-export function createUser(input: { name: string; phone: string; email?: string; area: string }): UserProfile {
+export function createUser(input: {
+  name: string;
+  phone: string;
+  email?: string;
+  area: string;
+  address?: string;
+  addressLocation?: LatLng;
+}): UserProfile {
   return {
     id: `u_${Date.now()}`,
     name: input.name.trim() || 'Guest',
     phone: input.phone,
     email: input.email,
     area: input.area,
-    referralCode: genCode(input.name),
+    address: input.address,
+    addressLocation: input.addressLocation,
+    referralCode: generateReferralCode(input.name),
     referredCount: 0,
     freeDeliveries: 0,
-    isDriver: false,
     simulateOutsideZone: false,
     createdAt: Date.now(),
   };

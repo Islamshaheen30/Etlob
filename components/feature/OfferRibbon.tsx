@@ -12,12 +12,11 @@ interface Props {
 }
 
 export function OfferRibbon({ restaurant, onPress }: Props) {
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const offer = restaurant.offer;
   if (!offer) return null;
-  const ar = locale === 'ar';
-  const title = ar ? offer.titleAr : offer.titleEn;
-  const desc = ar ? offer.descAr : offer.descEn;
+  const title = offer.titleAr;
+  const desc = offer.descAr;
 
   return (
     <Pressable
@@ -33,9 +32,7 @@ export function OfferRibbon({ restaurant, onPress }: Props) {
         </View>
       </View>
       <View style={styles.body}>
-        <Text style={styles.restName} numberOfLines={1}>
-          {ar ? restaurant.nameAr : restaurant.name}
-        </Text>
+        <Text style={styles.restName} numberOfLines={1}>{restaurant.nameAr}</Text>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
         <Text style={styles.desc} numberOfLines={2}>{desc}</Text>
         <View style={styles.footer}>
@@ -84,9 +81,9 @@ const styles = StyleSheet.create({
   badgeNum: { ...typography.bodyStrong, color: colors.text, lineHeight: 18 },
   badgeLabel: { fontSize: 9, fontWeight: '800', color: '#5B4A00', letterSpacing: 0.5 },
   body: { flex: 1, padding: spacing.md, gap: 4 },
-  restName: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
-  title: { ...typography.bodyStrong, color: colors.text },
-  desc: { ...typography.caption, color: colors.textMuted },
+  restName: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: 'right' },
+  title: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  desc: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
   footer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4 },
   ctaPill: {
     flexDirection: 'row',

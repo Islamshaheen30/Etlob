@@ -18,8 +18,7 @@ interface Props {
 
 export function RestaurantCard({ restaurant, onPress, featured }: Props) {
   const { user } = useAuth();
-  const { locale, t } = useLocale();
-  const ar = locale === 'ar';
+  const { t } = useLocale();
   const isBusy = restaurant.status !== 'open';
 
   const time = useMemo(() => {
@@ -73,11 +72,11 @@ export function RestaurantCard({ restaurant, onPress, featured }: Props) {
       <View style={styles.body}>
         <View style={styles.titleRow}>
           <Text numberOfLines={1} style={styles.name}>
-            {ar ? restaurant.nameAr : restaurant.name}
+            {restaurant.nameAr}
           </Text>
         </View>
         <Text numberOfLines={1} style={styles.cuisine}>
-          {restaurant.cuisine} • {restaurant.reviews}+ orders
+          {restaurant.cuisine} • {restaurant.reviews}+ طلب
         </Text>
         <View style={styles.metaRow}>
           <Pill
@@ -87,13 +86,13 @@ export function RestaurantCard({ restaurant, onPress, featured }: Props) {
           />
           <Pill
             tone="primary"
-            label={`EGP ${restaurant.deliveryFee}`}
+            label={`${restaurant.deliveryFee} ج.م`}
             icon={<MaterialIcons name="pedal-bike" size={12} color="#5B4A00" />}
           />
         </View>
         <Text style={styles.timeBreakdown}>
           {time.prep} {t('prepLabel')} + {time.ride} {t('rideLabel')}
-          {time.distKm > 0 ? ` · ${time.distKm.toFixed(1)} km` : ''}
+          {time.distKm > 0 ? ` · ${time.distKm.toFixed(1)} كم` : ''}
         </Text>
       </View>
     </Pressable>
@@ -165,13 +164,14 @@ const styles = StyleSheet.create({
   },
   body: { padding: spacing.lg },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { ...typography.section, color: colors.text, flex: 1 },
-  cuisine: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  name: { ...typography.section, color: colors.text, flex: 1, textAlign: 'right' },
+  cuisine: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
   metaRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   timeBreakdown: {
     ...typography.micro,
     color: colors.textMuted,
     marginTop: 6,
     fontWeight: '600',
+    textAlign: 'right',
   },
 });

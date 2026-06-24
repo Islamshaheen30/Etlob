@@ -1,8 +1,17 @@
-import React, { useMemo } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
+  AdBanner,
   CategoryBar,
   GeofenceBanner,
   OfferRibbon,
@@ -21,11 +30,11 @@ import { colors, radius, shadows, spacing, typography } from '@/constants/theme'
 export default function HomeTab() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const { restaurants, cuisine, setCuisine, cuisines, query, setQuery, offerRestaurants } =
     useRestaurants();
   const { orders } = useOrders();
-  const ar = locale === 'ar';
+  const [focusedSearch, setFocusedSearch] = useState(false);
 
   const inArea = useMemo(() => userIsInDeliveryArea(user), [user]);
 
@@ -42,7 +51,6 @@ export default function HomeTab() {
   if (loading) return null;
   if (!user) return <Redirect href="/" />;
 
-  // Out-of-area users get a dedicated screen.
   if (!inArea) {
     return (
       <Screen>
@@ -50,20 +58,14 @@ export default function HomeTab() {
           <View style={styles.greetingRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.hello}>
-                {t('hello')}, {user.name.split(' ')[0]}
+                {t('hello')}، {user.name.split(' ')[0]}
               </Text>
               <View style={styles.locRow}>
                 <MaterialIcons name="location-on" size={14} color={colors.danger} />
-                <Text style={[styles.locText, { color: colors.danger }]}>
-                  {ar ? 'خارج منطقة الخدمة' : 'Outside service area'}
-                </Text>
+                <Text style={[styles.locText, { color: colors.danger }]}>{t('outsideArea')}</Text>
               </View>
             </View>
-            <Pressable
-              onPress={() => router.push('/(tabs)/profile')}
-              style={styles.avatar}
-              hitSlop={8}
-            >
+            <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.avatar} hitSlop={8}>
               <Text style={styles.avatarText}>{user.name.charAt(0).toUpperCase()}</Text>
             </Pressable>
           </View>
@@ -89,38 +91,34 @@ export default function HomeTab() {
             <View style={styles.greetingRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.hello}>
-                  {t('hello')}, {user.name.split(' ')[0]}
+                  {t('hello')}، {user.name.split(' ')[0]}
                 </Text>
                 <View style={styles.locRow}>
                   <MaterialIcons name="location-on" size={14} color={colors.primaryDark} />
-                  <Text style={styles.locText}>
-                    {user.area} · {APP.city}
+                  <Text style={styles.locText} numberOfLines={1}>
+                    {user.address || user.area} · {APP.cityAr}
                   </Text>
                 </View>
               </View>
-              <Pressable
-                onPress={() => router.push('/(tabs)/profile')}
-                style={styles.avatar}
-                hitSlop={8}
-              >
+              <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.avatar} hitSlop={8}>
                 <Text style={styles.avatarText}>{user.name.charAt(0).toUpperCase()}</Text>
               </Pressable>
             </View>
 
             {/* Search */}
-            <View style={styles.search}>
+            <View style={[styles.search, focusedSearch && styles.searchFocused]}>
               <MaterialIcons name="search" size={18} color={colors.textMuted} />
-              <Pressable
-                style={{ flex: 1 }}
-                onPress={() => {}}
-              >
-                <Text
-                  style={[styles.searchInput, !query && { color: colors.textSubtle }]}
-                  onPress={() => {}}
-                >
-                  {query || t('searchHint')}
-                </Text>
-              </Pressable>
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('searchHint')}
+                placeholderTextColor={colors.textSubtle}
+                style={styles.searchInput}
+                textAlign="right"
+                onFocus={() => setFocusedSearch(true)}
+                onBlur={() => setFocusedSearch(false)}
+                returnKeyType="search"
+              />
               {query ? (
                 <Pressable onPress={() => setQuery('')} hitSlop={8}>
                   <MaterialIcons name="close" size={18} color={colors.textMuted} />
@@ -138,45 +136,22 @@ export default function HomeTab() {
                   <MaterialIcons name="pedal-bike" size={20} color={colors.text} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.activeTitle}>
-                    {ar ? 'طلب قيد التنفيذ' : 'Order in progress'}
-                  </Text>
-                  <Text style={styles.activeSub}>
-                    {activeOrder.restaurant.name} · ETA {activeOrder.estimatedMinutes} min
+                  <Text style={styles.activeTitle}>{t('orderInProgress')}</Text>
+                  <Text style={styles.activeSub} numberOfLines={1}>
+                    {activeOrder.restaurant.name} · {activeOrder.estimatedMinutes} {t('minShort')}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color={colors.text} />
+                <MaterialIcons name="chevron-left" size={22} color={colors.text} />
               </Pressable>
             ) : null}
 
-            {/* Hero strip */}
-            <View style={styles.hero}>
-              <View style={{ flex: 1, padding: spacing.lg }}>
-                <Pill label={`${APP.city} only`} tone="neutral" />
-                <Text style={styles.heroTitle}>
-                  {ar
-                    ? 'توصيل مجاني\nمع كل 10 دعوات'
-                    : 'Free delivery on\nevery 10 referrals'}
-                </Text>
-                <Text style={styles.heroSub}>
-                  {ar
-                    ? `توصيلات مجانية: ${user.freeDeliveries} · أصدقاء: ${user.referredCount}`
-                    : `Free deliveries: ${user.freeDeliveries} · Friends invited: ${user.referredCount}`}
-                </Text>
-                <Pressable
-                  onPress={() => router.push('/(tabs)/profile')}
-                  style={styles.heroBtn}
-                >
-                  <Text style={styles.heroBtnText}>
-                    {ar ? 'كود الدعوة' : 'Get my code'}
-                  </Text>
-                  <MaterialIcons name="chevron-right" size={16} color={colors.text} />
-                </Pressable>
-              </View>
-              <View style={styles.heroIllust}>
-                <MaterialIcons name="redeem" size={64} color={colors.primaryDark} />
-              </View>
-            </View>
+            {/* Auto-scrolling admin-controlled advertising banner */}
+            <AdBanner
+              height={180}
+              onPressBanner={(b) => {
+                if (b.restaurantId) router.push(`/restaurant/${b.restaurantId}`);
+              }}
+            />
 
             {/* Featured rail */}
             {featured.length > 0 ? (
@@ -217,9 +192,7 @@ export default function HomeTab() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>
-              {ar ? 'لم يتم العثور على مطاعم.' : 'No restaurants found.'}
-            </Text>
+            <Text style={styles.emptyText}>لم يتم العثور على مطاعم.</Text>
           </View>
         }
         ListFooterComponent={
@@ -257,9 +230,9 @@ export default function HomeTab() {
 const styles = StyleSheet.create({
   outerScroll: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  hello: { ...typography.title, color: colors.text },
+  hello: { ...typography.title, color: colors.text, textAlign: 'right' },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  locText: { ...typography.caption, color: colors.textMuted },
+  locText: { ...typography.caption, color: colors.textMuted, flex: 1 },
   avatar: {
     width: 44,
     height: 44,
@@ -276,12 +249,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
-    paddingVertical: 12,
+    paddingVertical: 4,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  searchInput: { ...typography.body, color: colors.text },
+  searchFocused: { borderColor: colors.primaryDark },
+  searchInput: { ...typography.body, color: colors.text, flex: 1, paddingVertical: 10 },
   activeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,31 +273,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeTitle: { ...typography.bodyStrong, color: colors.text },
-  activeSub: { ...typography.caption, color: colors.text },
-  hero: {
-    flexDirection: 'row',
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    ...shadows.soft,
-  },
-  heroTitle: { ...typography.title, color: colors.text, marginTop: spacing.sm },
-  heroSub: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
-  heroBtn: {
-    marginTop: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    alignSelf: 'flex-start',
-    gap: 4,
-  },
-  heroBtnText: { ...typography.caption, color: colors.text, fontWeight: '700' },
-  heroIllust: { width: 110, alignItems: 'center', justifyContent: 'center' },
-  section: { ...typography.section, color: colors.text },
+  activeTitle: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  activeSub: { ...typography.caption, color: colors.text, textAlign: 'right' },
+  section: { ...typography.section, color: colors.text, textAlign: 'right' },
   empty: { padding: spacing.xl, alignItems: 'center' },
   emptyText: { ...typography.body, color: colors.textMuted },
   offersSection: { marginTop: spacing.xl, gap: spacing.md },
@@ -341,5 +293,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  offersSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  offersSub: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
 });

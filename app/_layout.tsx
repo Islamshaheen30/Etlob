@@ -7,7 +7,6 @@ import { LocaleProvider } from '@/contexts/LocaleContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { OrdersProvider } from '@/contexts/OrdersContext';
-import { DriverProvider } from '@/contexts/DriverContext';
 import { colors } from '@/constants/theme';
 
 export default function RootLayout() {
@@ -17,27 +16,24 @@ export default function RootLayout() {
         <LocaleProvider>
           <AuthProvider>
             <OrdersProvider>
-              <DriverProvider>
-                <CartProvider>
-                  <StatusBar style="dark" />
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.background },
-                      animation: 'slide_from_right',
-                    }}
-                  >
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="login" />
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="restaurant/[id]" />
-                    <Stack.Screen name="cart" options={{ presentation: 'modal' }} />
-                    <Stack.Screen name="checkout" />
-                    <Stack.Screen name="track/[orderId]" />
-                    <Stack.Screen name="driver" />
-                  </Stack>
-                </CartProvider>
-              </DriverProvider>
+              <CartProvider>
+                <StatusBar style="dark" />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                    animation: 'slide_from_right',
+                  }}
+                >
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="login" />
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="restaurant/[id]" />
+                  <Stack.Screen name="cart" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="checkout" />
+                  <Stack.Screen name="track/[orderId]" />
+                </Stack>
+              </CartProvider>
             </OrdersProvider>
           </AuthProvider>
         </LocaleProvider>

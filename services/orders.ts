@@ -37,13 +37,10 @@ export interface Order {
   address: string;
   notes?: string;
   rider?: { name: string; phone: string; rating: number };
-  // Rider live position (mocked)
   riderPosition?: { lat: number; lng: number };
   customerPosition: { lat: number; lng: number };
   restaurantPosition: { lat: number; lng: number };
   estimatedMinutes: number;
-  // Customer-selected delivery vehicle. Used both for pricing and to route
-  // the order only to riders that operate this vehicle type.
   vehicleType: VehicleType;
 }
 
@@ -54,7 +51,6 @@ export async function loadOrders(): Promise<Order[]> {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return [];
     const list = JSON.parse(raw) as Order[];
-    // Migrate legacy orders that pre-date vehicle selection.
     return list.map((o) => ({ ...o, vehicleType: o.vehicleType ?? 'bicycle' }));
   } catch {
     return [];
@@ -75,7 +71,7 @@ export function buildOrder(params: {
   customerPosition: { lat: number; lng: number };
   freeDelivery?: boolean;
   vehicleType: VehicleType;
-  vehicleFee: number; // pre-calculated fee for the chosen vehicle
+  vehicleFee: number;
   estimatedMinutes?: number;
 }): Order {
   const subtotal = params.items.reduce((s, i) => s + i.item.price * i.qty, 0);
@@ -103,7 +99,7 @@ export function buildOrder(params: {
     estimatedMinutes: params.estimatedMinutes ?? params.restaurant.etaMin,
     vehicleType: params.vehicleType,
     rider: {
-      name: 'Ahmed Hassan',
+      name: 'أحمد حسن',
       phone: '+20 100 555 1212',
       rating: 4.9,
     },
@@ -119,12 +115,12 @@ export function progressOrderStatus(current: OrderStatus): OrderStatus {
 }
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending_payment: 'Awaiting payment',
-  verifying: 'Verifying payment',
-  confirmed: 'Confirmed',
-  preparing: 'Restaurant is preparing',
-  rider_pickup: 'Rider picking up',
-  on_the_way: 'On the way',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
+  pending_payment: 'بانتظار الدفع',
+  verifying: 'جاري التحقق',
+  confirmed: 'مؤكد',
+  preparing: 'المطعم يحضّر',
+  rider_pickup: 'السائق يستلم',
+  on_the_way: 'في الطريق إليك',
+  delivered: 'تم التسليم',
+  cancelled: 'ملغي',
 };

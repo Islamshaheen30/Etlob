@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { OUT_OF_AREA, DELIVERY_CIRCLES } from '@/constants/adminSettings';
-import { useLocale } from '@/hooks/useLocale';
 import { colors, radius, shadows, spacing, typography } from '@/constants/theme';
 
 interface Props {
@@ -10,9 +9,7 @@ interface Props {
 }
 
 export function GeofenceBanner({ onActionPress }: Props) {
-  const { locale } = useLocale();
-  const copy = OUT_OF_AREA[locale];
-  const ar = locale === 'ar';
+  const copy = OUT_OF_AREA;
 
   return (
     <View style={styles.card}>
@@ -23,15 +20,13 @@ export function GeofenceBanner({ onActionPress }: Props) {
       <Text style={styles.body}>{copy.body}</Text>
 
       <View style={styles.zonesBox}>
-        <Text style={styles.zonesLabel}>
-          {ar ? 'مناطق التغطية' : 'Coverage zones'}
-        </Text>
+        <Text style={styles.zonesLabel}>مناطق التغطية</Text>
         <View style={styles.zonesList}>
           {DELIVERY_CIRCLES.filter((c) => c.active).map((c) => (
             <View key={c.id} style={styles.zonePill}>
               <View style={styles.zoneDot} />
               <Text style={styles.zoneText}>
-                {ar ? c.nameAr : c.name} · {c.radiusKm} km
+                {c.nameAr} · {c.radiusKm} كم
               </Text>
             </View>
           ))}
@@ -82,6 +77,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textMuted,
     letterSpacing: 0.5,
+    textAlign: 'right',
   },
   zonesList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   zonePill: {

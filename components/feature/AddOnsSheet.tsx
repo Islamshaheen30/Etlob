@@ -23,9 +23,8 @@ interface Props {
 }
 
 export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm }: Props) {
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const ar = locale === 'ar';
 
   useEffect(() => {
     if (visible) setSelected({});
@@ -54,10 +53,7 @@ export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm
             </Pressable>
           </View>
 
-          <ScrollView
-            contentContainerStyle={styles.body}
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
             <View style={styles.mainRow}>
               <View style={styles.mainImgWrap}>
                 <Image
@@ -68,13 +64,9 @@ export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.mainName} numberOfLines={1}>
-                  {ar ? mainItem.nameAr : mainItem.name}
-                </Text>
-                <Text style={styles.mainSub} numberOfLines={1}>
-                  {ar ? mainItem.name : mainItem.nameAr}
-                </Text>
-                <Text style={styles.mainPrice}>EGP {mainItem.price}</Text>
+                <Text style={styles.mainName} numberOfLines={1}>{mainItem.nameAr}</Text>
+                <Text style={styles.mainSub} numberOfLines={1}>{mainItem.name}</Text>
+                <Text style={styles.mainPrice}>{mainItem.price} ج.م</Text>
               </View>
               <View style={styles.mainTag}>
                 <MaterialIcons name="check" size={14} color={colors.text} />
@@ -110,13 +102,9 @@ export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.addName} numberOfLines={1}>
-                        {ar ? s.nameAr : s.name}
-                      </Text>
-                      <Text style={styles.addDesc} numberOfLines={2}>
-                        {s.description}
-                      </Text>
-                      <Text style={styles.addPrice}>+ EGP {s.price}</Text>
+                      <Text style={styles.addName} numberOfLines={1}>{s.nameAr}</Text>
+                      <Text style={styles.addDesc} numberOfLines={2}>{s.description}</Text>
+                      <Text style={styles.addPrice}>+ {s.price} ج.م</Text>
                     </View>
                     <View style={[styles.checkbox, isOn && styles.checkboxOn]}>
                       {isOn ? <MaterialIcons name="check" size={16} color={colors.text} /> : null}
@@ -130,7 +118,7 @@ export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm
           <View style={styles.footer}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>{t('total')}</Text>
-              <Text style={styles.totalValue}>EGP {total}</Text>
+              <Text style={styles.totalValue}>{total} ج.م</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Button
@@ -144,9 +132,7 @@ export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm
                 label={t('addToCart')}
                 fullWidth={false}
                 style={{ flex: 1.4 }}
-                onPress={() =>
-                  onConfirm(Object.keys(selected).filter((k) => selected[k]))
-                }
+                onPress={() => onConfirm(Object.keys(selected).filter((k) => selected[k]))}
               />
             </View>
           </View>
@@ -157,11 +143,7 @@ export function AddOnsSheet({ visible, mainItem, suggestions, onClose, onConfirm
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   dismissArea: { flex: 1 },
   sheet: {
     backgroundColor: colors.background,
@@ -195,8 +177,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...typography.section, color: colors.text },
-  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  title: { ...typography.section, color: colors.text, textAlign: 'right' },
+  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
   body: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.lg },
   mainRow: {
     flexDirection: 'row',
@@ -214,9 +196,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   mainImg: { width: '100%', height: '100%' },
-  mainName: { ...typography.bodyStrong, color: colors.text },
-  mainSub: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
-  mainPrice: { ...typography.bodyStrong, color: colors.text, marginTop: 4 },
+  mainName: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  mainSub: { ...typography.caption, color: colors.textMuted, marginTop: 1, textAlign: 'right' },
+  mainPrice: { ...typography.bodyStrong, color: colors.text, marginTop: 4, textAlign: 'right' },
   mainTag: {
     width: 28,
     height: 28,
@@ -231,6 +213,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: '700',
     marginTop: spacing.sm,
+    textAlign: 'right',
   },
   empty: {
     flexDirection: 'row',
@@ -260,9 +243,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   addImg: { width: '100%', height: '100%' },
-  addName: { ...typography.bodyStrong, color: colors.text },
-  addDesc: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  addPrice: { ...typography.caption, color: colors.text, fontWeight: '700', marginTop: 4 },
+  addName: { ...typography.bodyStrong, color: colors.text, textAlign: 'right' },
+  addDesc: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
+  addPrice: { ...typography.caption, color: colors.text, fontWeight: '700', marginTop: 4, textAlign: 'right' },
   checkbox: {
     width: 26,
     height: 26,
@@ -282,11 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     gap: spacing.md,
   },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   totalLabel: { ...typography.bodyStrong, color: colors.textMuted },
   totalValue: { ...typography.title, color: colors.text },
 });
