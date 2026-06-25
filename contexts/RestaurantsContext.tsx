@@ -11,7 +11,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { getSupabaseClient } from '@/template/core';
+import { supabase } from '@/services/supabaseClient';
 import { MenuItem, Restaurant } from '@/constants/mockData';
 import { SADAT_CENTER } from '@/constants/config';
 
@@ -89,7 +89,6 @@ export function RestaurantsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const supabase = getSupabaseClient();
       const [restResp, menuResp] = await Promise.all([
         supabase.from('restaurants').select('*').eq('active', true),
         supabase.from('menu_items').select('*').eq('available', true),

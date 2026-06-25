@@ -2,7 +2,7 @@
 // Orders live in the `orders` table; this module owns the row <-> Order
 // mapping and exposes thin CRUD helpers for the OrdersContext to use.
 
-import { getSupabaseClient } from '@/template/core';
+import { supabase } from './supabaseClient';
 import { PaymentMethodId, SADAT_CENTER } from '@/constants/config';
 import { VehicleType } from '@/constants/adminSettings';
 import { MenuItem, Restaurant } from '@/constants/mockData';
@@ -160,7 +160,6 @@ export function mapOrderRow(
 export async function createOrderInDb(
   row: ReturnType<typeof buildOrderRow>
 ): Promise<{ data: Order | null; error: string | null }> {
-  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('orders')
     .insert(row)
@@ -174,7 +173,6 @@ export async function createOrderInDb(
 export async function fetchOrdersForCustomer(
   customerId: string
 ): Promise<Order[]> {
-  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('orders')
     .select('*')
@@ -189,7 +187,6 @@ export async function updateOrderInDb(
   id: string,
   patch: Record<string, any>
 ): Promise<{ error: string | null }> {
-  const supabase = getSupabaseClient();
   const { error } = await supabase.from('orders').update(patch).eq('id', id);
   return { error: error ? error.message : null };
 }
