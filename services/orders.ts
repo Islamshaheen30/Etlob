@@ -97,6 +97,7 @@ export function buildOrderRow(params: BuildOrderParams) {
     status: params.paymentMethod === 'cash' ? 'confirmed' : 'pending_payment',
     payment_method: params.paymentMethod,
     vehicle_type: params.vehicleType,
+    required_vehicle_type: params.vehicleType, // New field for driver filtering
     customer_location: params.customerPosition,
     customer_address: params.address,
     customer_name: params.customerName,
