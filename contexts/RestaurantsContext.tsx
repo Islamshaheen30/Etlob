@@ -90,7 +90,7 @@ export function RestaurantsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const [restResp, menuResp] = await Promise.all([
-        supabase.from('restaurants').select('*').eq('active', true),
+        supabase.from('restaurants').select('*').eq('status', 'active'),
         supabase.from('menu_items').select('*').eq('available', true),
       ]);
       if (restResp.error) throw restResp.error;
