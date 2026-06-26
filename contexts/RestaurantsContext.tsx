@@ -1,97 +1,162 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
+// Restaurants & menu items loaded from Supabase tables.
+// Acts as the single source of truth for the app — `useRestaurants` and
+// page-level hooks read from this context instead of static seed data.
 
-// تعريف أنواع البيانات
-export interface Restaurant {
-  id: string;
-  name: string;
-  nameAr: string;
-  cuisine: string;
-  rating: number;
-  reviews: number;
-  etaMin: number;
-  prepTimeMin: number;
-  status: 'open' | 'busy' | 'closed';
-  deliveryFee: number;
-  image: string;
-  cover: string;
-}
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { supabase } from '@/services/supabaseClient';
+import { MenuItem, Restaurant } from '@/constants/mockData';
+import { SADAT_CENTER } from '@/constants/config';
 
 interface RestaurantsContextType {
   restaurants: Restaurant[];
+  menuItems: MenuItem[];
   loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
   getRestaurantById: (id: string) => Restaurant | undefined;
+  getMenuByRestaurant: (id: string) => MenuItem[];
 }
 
-const RestaurantsContext = createContext<RestaurantsContextType | undefined>(undefined);
+const RestaurantsContext = createContext<RestaurantsContextType | undefined>(
+  undefined
+);
 
-export const RestaurantsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [loading, setLoading] = useState(true);
+const STATUS_ORDER: Record<string, number> = { open: 0, busy: 1, closed: 2 };
 
-  // دالة تحويل البيانات من قاعدة البيانات لشكل التطبيق
-  const mapRow = (row: any): Restaurant => ({
+function mapRestaurantRow(row: any): Restaurant {
+  const prep = Number(row.prep_time_min) || 20;
+  return {
     id: row.id,
-    name: row.name_en || row.name || '',
-    nameAr: row.name_ar || row.name || '',
-    cuisine: row.cuisine || 'متنوع',
-    rating: row.rating || 4.5,
-    reviews: row.reviews || 0,
-    etaMin: (row.prep_time_min || 20) + 15,
-    prepTimeMin: row.prep_time_min || 20,
-    status: row.operational_status || 'open',
-    deliveryFee: row.delivery_fee || 0,
+    name: row.name,
+    nameAr: row.name_ar,
+    cuisine: row.cuisine || 'Other',
+    rating: Number(row.rating) || 4.5,
+    reviews: Number(row.reviews) || 100,
+    etaMin: prep + 12,
+    prepTimeMin: prep,
+    status: (row.status as Restaurant['status']) || 'open',
+    deliveryFee: Number(row.delivery_fee) || 0,
     image: row.image_url || '',
     cover: row.image_url || '',
-  });
+    description: row.description_ar || row.description_en || '',
+    location: {
+      lat: Number(row.location_lat) || SADAT_CENTER.lat,
+      lng: Number(row.location_lng) || SADAT_CENTER.lng,
+    },
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    offer: row.offer_pct
+      ? {
+          titleEn: row.offer_title_en || `${row.offer_pct}% off`,
+          titleAr: row.offer_title_ar || `خصم ${row.offer_pct}%`,
+          descEn: row.offer_title_en || '',
+          descAr: row.offer_title_ar || '',
+          discountPct: Number(row.offer_pct),
+        }
+      : undefined,
+  };
+}
 
-  const fetchRestaurants = async () => {
+function mapMenuItemRow(row: any): MenuItem {
+  return {
+    id: row.id,
+    restaurantId: row.restaurant_id,
+    name: row.name,
+    nameAr: row.name_ar,
+    description: row.description_ar || row.description || '',
+    price: Number(row.price) || 0,
+    image: row.image_url || '',
+    category: row.category || 'Main',
+    popular: !!row.popular,
+    isAddon: !!row.is_addon,
+  };
+}
+
+export function RestaurantsProvider({ children }: { children: ReactNode }) {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      // جلب المطاعم النشطة فقط
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('status', 'active');
-
-      if (error) throw error;
-      if (data) {
-        setRestaurants(data.map(mapRow));
-      }
-    } catch (err) {
-      console.error('Error fetching restaurants:', err);
+      const [restResp, menuResp] = await Promise.all([
+        supabase.from('restaurants').select('*').eq('status', 'active'),
+        supabase.from('menu_items').select('*').eq('available', true),
+      ]);
+      if (restResp.error) throw restResp.error;
+      if (menuResp.error) throw menuResp.error;
+      const rs = (restResp.data || [])
+        .map(mapRestaurantRow)
+        .sort(
+          (a, b) =>
+            (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0)
+        );
+      setRestaurants(rs);
+      setMenuItems((menuResp.data || []).map(mapMenuItemRow));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load restaurants');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchRestaurants();
-
-    // تفعيل التحديث اللحظي (Real-time)
-    const subscription = supabase
-      .channel('restaurants_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, () => {
-        fetchRestaurants();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
   }, []);
 
-  const getRestaurantById = (id: string) => restaurants.find(r => r.id === id);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const getRestaurantById = useCallback(
+    (id: string) => restaurants.find((r) => r.id === id),
+    [restaurants]
+  );
+
+  const getMenuByRestaurant = useCallback(
+    (id: string) => menuItems.filter((m) => m.restaurantId === id),
+    [menuItems]
+  );
+
+  const value = useMemo(
+    () => ({
+      restaurants,
+      menuItems,
+      loading,
+      error,
+      refresh,
+      getRestaurantById,
+      getMenuByRestaurant,
+    }),
+    [
+      restaurants,
+      menuItems,
+      loading,
+      error,
+      refresh,
+      getRestaurantById,
+      getMenuByRestaurant,
+    ]
+  );
 
   return (
-    <RestaurantsContext.Provider value={{ restaurants, loading, getRestaurantById }}>
+    <RestaurantsContext.Provider value={value}>
       {children}
     </RestaurantsContext.Provider>
   );
-};
+}
 
-export const useRestaurants = () => {
-  const context = useContext(RestaurantsContext);
-  if (!context) throw new Error('useRestaurants must be used within a RestaurantsProvider');
-  return context;
-};
+export function useRestaurantsData() {
+  const ctx = useContext(RestaurantsContext);
+  if (!ctx)
+    throw new Error(
+      'useRestaurantsData must be used within RestaurantsProvider'
+    );
+  return ctx;
+}
