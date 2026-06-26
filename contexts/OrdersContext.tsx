@@ -12,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { supabase } from '@/services/supabaseClient';
+import { getSupabaseClient } from '@/template/core';
 import {
   fetchOrdersForCustomer,
   mapOrderRow,
@@ -62,6 +62,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
     })();
 
+    const supabase = getSupabaseClient();
     const channel = supabase
       .channel(`orders-${user.id}`)
       .on(
